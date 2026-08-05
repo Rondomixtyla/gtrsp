@@ -9,7 +9,23 @@
 <body>
     <canvas id="gameCanvas"></canvas>
 
-    <div id="ui-container">
+    <!-- OYUNA GİRİŞ EKRANI (START MENU) -->
+    <div id="start-menu">
+        <div class="menu-box">
+            <h1>Sploop.io</h1>
+            <input type="text" id="nickname-input" placeholder="Enter Nickname..." maxlength="15">
+            <button id="play-btn">PLAY</button>
+        </div>
+    </div>
+
+    <!-- OYUN İÇİ ARAYÜZ (HUD) -->
+    <div id="ui-container" class="hidden">
+        <!-- Sağ Üst Leaderboard (Skor Tablosu) -->
+        <div id="leaderboard">
+            <h3>LEADERBOARD</h3>
+            <ol id="leaderboard-list"></ol>
+        </div>
+
         <!-- Sol Alttaki Mini Harita (A1 - D4) -->
         <div id="minimap-grid">
             <div class="row"><span>A1</span><span>A2</span><span>A3</span><span>A4</span></div>
@@ -24,21 +40,21 @@
             <div id="age-label">AGE <span id="age-num">0</span></div>
             <div id="xp-bar-bg"><div id="xp-bar-fill"></div></div>
             <div id="inventory-bar">
-                <div class="slot active" data-slot="0"><div class="icon-box">🔨</div></div>
-                <div class="slot" data-slot="1"><div class="icon-box">🍎</div></div>
-                <div class="slot" data-slot="2"><div class="icon-box">🪵</div></div>
-                <div class="slot" data-slot="3"><div class="icon-box">🕳️</div></div>
-                <div class="slot" data-slot="4"><div class="icon-box">⚠️</div></div>
-                <div class="slot" data-slot="5"><div class="icon-box">⚙️</div></div>
+                <div class="slot active" data-slot="0">🔨</div>
+                <div class="slot" data-slot="1">🍎</div>
+                <div class="slot" data-slot="2">🪵</div>
+                <div class="slot" data-slot="3">🕳️</div>
+                <div class="slot" data-slot="4">⚠️</div>
+                <div class="slot" data-slot="5">⚙️</div>
             </div>
         </div>
 
         <!-- Sağ Alttaki Kaynak Göstergeleri -->
         <div id="resource-panel">
-            <div class="res-item"><span class="res-icon food-icon">🍎</span><span id="res-food">100</span></div>
-            <div class="res-item"><span class="res-icon wood-icon">🪵</span><span id="res-wood">100</span></div>
-            <div class="res-item"><span class="res-icon stone-icon">🪨</span><span id="res-stone">100</span></div>
-            <div class="res-item"><span class="res-icon gold-icon">🪙</span><span id="res-gold">0</span></div>
+            <div class="res-item">🍎 <span id="res-food">100</span></div>
+            <div class="res-item">🪵 <span id="res-wood">100</span></div>
+            <div class="res-item">🪨 <span id="res-stone">100</span></div>
+            <div class="res-item">🪙 <span id="res-gold">0</span></div>
         </div>
 
         <!-- Dokunmatik Kontrol Alanı (Sol Taraf) -->
