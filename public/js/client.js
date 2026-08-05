@@ -12,9 +12,30 @@ let MAP_SIZE = 4000;
 let isPlaying = false;
 let floatingTexts = [];
 let particles = [];
-let camShake = { x: 0, y: 0, t: 0 };
 let cameraZoom = 0.85;
 let targetZoom = 0.85;
+
+// Sploop.io Age Eşya Ağacı Verisi
+const AGE_UPGRADES = {
+    2: [
+        { id: 'sword', name: 'Great Sword', icon: '⚔️', desc: 'Yüksek Yıkım Hasarı' },
+        { id: 'spear', name: 'Spear', icon: '🗡️', desc: 'Uzun Menzil Hasarı' }
+    ],
+    3: [
+        { id: 'cookie', name: 'Cheese/Cookie', icon: '🧀', desc: '+40 Can Yenileme' },
+        { id: 'boostPad', name: 'Boost Pad', icon: '💨', desc: 'Hızlı Fırlatıcı' }
+    ],
+    4: [
+        { id: 'greaterSpike', name: 'Spinning Spike', icon: '⚙️', desc: 'Dönen Dikenli Yapı' },
+        { id: 'poisonSpike', name: 'Poison Spike', icon: '☣️', desc: 'Zehirli Diken' }
+    ],
+    5: [
+        { id: 'windmill', name: 'Faster Windmill', icon: '🌀', desc: 'Hızlı Altın Üretimi' },
+        { id: 'trap', name: 'Pitfall Trap', icon: '🕳️', desc: 'Düşman Donduran Tuzak' }
+    ]
+};
+
+let lastAgePrompted = 1;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -40,11 +61,11 @@ socket.on('init', (data) => {
     requestAnimationFrame(renderLoop);
 });
 
-// --- Hasar / öldürme olaylarından partikül ve yazı üretimi ---
 socket.on('damage', (data) => {
     floatingTexts.push({ x: data.x, y: data.y, text: '-' + data.amount, life: 1, color: '#ff5252' });
     spawnParticles(data.x, data.y, '#ff5252', 6);
 });
+
 socket.on('resourceGain', (data) => {
     floatingTexts.push({ x: data.x, y: data.y, text: '+' + data.amount, life: 1, color: '#ffd54f' });
 });
@@ -53,14 +74,51 @@ function spawnParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const speed = 1 + Math.random() * 3;
-        particles.push({
-            x, y,
-            vx: Math.cos(ang) * speed,
-            vy: Math.sin(ang) * speed,
-            life: 1,
-            color
-        });
+        particles.push({ x, y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 1, color });
     }
+}
+
+// Age Seçim Menüsünü Tetikleyici
+function checkAgeUpgrade(currentAge) {
+    if (currentAge > lastAgePrompted && AGE_UPGRADES[currentAge]) {
+        lastAgePrompted = currentAge;
+        showAgeSelectionMenu(currentAge);
+    }
+}
+
+function showAgeSelectionMenu(age) {
+    let menu = document.getElementById('age-upgrade-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'age-upgrade-menu';
+        menu.style.cssText = `
+            position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; z-index: 999; background: rgba(0,0,0,0.6);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
+        `;
+        document.body.appendChild(menu);
+    }
+
+    menu.innerHTML = '';
+    const items = AGE_UPGRADES[age];
+
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: #2b2b2b; color: white; border: 3px solid #fbc02d;
+            border-radius: 10px; padding: 10px 20px; text-align: center;
+            cursor: pointer; transition: transform 0.1s; user-select: none;
+        `;
+        card.innerHTML = `<div style="font-size:32px">${item.icon}</div><div style="font-weight:bold">${item.name}</div><div style="font-size:11px; color:#aaa">${item.desc}</div>`;
+        
+        card.onclick = () => {
+            socket.emit('selectUpgrade', { item: item.id, age });
+            menu.style.display = 'none';
+        };
+        menu.appendChild(card);
+    });
+
+    menu.style.display = 'flex';
 }
 
 socket.on('gameState', (state) => {
@@ -84,13 +142,14 @@ socket.on('gameState', (state) => {
             document.getElementById('age-num').innerText = me.age;
             document.getElementById('xp-bar-fill').style.width = me.xp + '%';
 
+            checkAgeUpgrade(me.age);
+
             const minimapPlayer = document.getElementById('minimap-player');
             if (minimapPlayer) {
                 minimapPlayer.style.left = (me.x / MAP_SIZE * 100) + '%';
                 minimapPlayer.style.top = (me.y / MAP_SIZE * 100) + '%';
             }
 
-            // Yavaş hareket ederken hafif zoom-in, hızlı koşarken zoom-out
             const speed = Math.hypot(me.vx || 0, me.vy || 0);
             targetZoom = speed > 3 ? 0.78 : 0.85;
         }
@@ -107,7 +166,6 @@ socket.on('gameState', (state) => {
     }
 });
 
-// --- Interpolasyon: sunucudan gelen state'ler arasında yumuşak geçiş ---
 function getInterpolatedPlayers(t) {
     if (!prevState) return gameState.players;
     const result = {};
@@ -155,11 +213,9 @@ function drawPlayer(p) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
-    // Yer gölgesi
     ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.beginPath(); ctx.arc(3, 5, p.radius, 0, Math.PI * 2); ctx.fill();
 
-    // İsim
     ctx.fillStyle = '#ffffff';
     ctx.font = '900 14px sans-serif';
     ctx.textAlign = 'center';
@@ -167,7 +223,6 @@ function drawPlayer(p) {
     ctx.fillText(p.name, 0, -p.radius - 22);
     ctx.shadowBlur = 0;
 
-    // Can barı (arka + dolgu + kenarlık)
     const barW = 48;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(-barW / 2, -p.radius - 14, barW, 7);
@@ -184,35 +239,40 @@ function drawPlayer(p) {
     ctx.strokeStyle = '#2d2d2d';
     ctx.lineWidth = 3.5;
 
-    // Sol el
     ctx.beginPath(); ctx.arc(22, -18, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Sağ el ve alet
     ctx.save();
     ctx.translate(22 + attackOffset, 18);
 
-    if (p.selectedSlot === 0 || p.selectedSlot === undefined) {
+    if (p.weapon === 'spear') {
+        // Mızrak Görseli
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(-5, -3, 45, 6);
+        ctx.strokeRect(-5, -3, 45, 6);
+        ctx.fillStyle = '#cfd8dc';
+        ctx.beginPath(); ctx.moveTo(40, -8); ctx.lineTo(55, 0); ctx.lineTo(40, 8); ctx.fill(); ctx.stroke();
+    } else if (p.selectedSlot === 1 || p.weapon === 'sword') {
+        // Kılıç
+        ctx.fillStyle = '#b0bec5';
+        ctx.fillRect(10, -4, 38, 8);
+        ctx.strokeRect(10, -4, 38, 8);
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(0, -6, 10, 12);
+        ctx.strokeRect(0, -6, 10, 12);
+    } else {
+        // Standart Kazma
         ctx.fillStyle = '#6d4c41';
         ctx.fillRect(0, -3, 28, 6);
         ctx.strokeRect(0, -3, 28, 6);
         ctx.fillStyle = '#546e7a';
         ctx.fillRect(22, -15, 12, 30);
         ctx.strokeRect(22, -15, 12, 30);
-    } else if (p.selectedSlot === 1) {
-        // Kılıç
-        ctx.fillStyle = '#b0bec5';
-        ctx.fillRect(10, -4, 34, 8);
-        ctx.strokeRect(10, -4, 34, 8);
-        ctx.fillStyle = '#6d4c41';
-        ctx.fillRect(0, -5, 12, 10);
-        ctx.strokeRect(0, -5, 12, 10);
     }
 
     ctx.fillStyle = '#e0a96d';
     ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
 
-    // Gövde
     ctx.fillStyle = '#e0a96d';
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4.5; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
@@ -237,22 +297,15 @@ function drawStructures(structures, me, scale) {
             ctx.fillStyle = '#a1887f';
             ctx.fillRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
             ctx.strokeRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
-            ctx.beginPath();
-            ctx.moveTo(-st.radius + 6, -st.radius / 2); ctx.lineTo(st.radius - 6, -st.radius / 2);
-            ctx.moveTo(-st.radius + 6, st.radius / 2); ctx.lineTo(st.radius - 6, st.radius / 2);
-            ctx.stroke();
-        } else if (st.type === 'spike') {
-            ctx.fillStyle = '#78909c';
+        } else if (st.type === 'spike' || st.type === 'greaterSpike') {
+            ctx.fillStyle = st.type === 'greaterSpike' ? '#b0bec5' : '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, st.radius - 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             for (let i = 0; i < 8; i++) {
-                let ang = (i * Math.PI) / 4;
+                let ang = (i * Math.PI) / 4 + (st.type === 'greaterSpike' ? millAngle : 0);
                 ctx.save();
                 ctx.rotate(ang);
-                ctx.fillStyle = '#b0bec5';
-                ctx.beginPath();
-                ctx.moveTo(st.radius - 6, -6);
-                ctx.lineTo(st.radius + 8, 0);
-                ctx.lineTo(st.radius - 6, 6);
+                ctx.fillStyle = st.type === 'greaterSpike' ? '#ef5350' : '#b0bec5';
+                ctx.beginPath(); ctx.moveTo(st.radius - 6, -6); ctx.lineTo(st.radius + 10, 0); ctx.lineTo(st.radius - 6, 6);
                 ctx.fill(); ctx.stroke();
                 ctx.restore();
             }
@@ -297,7 +350,6 @@ function drawResources(resources, me, scale) {
             ctx.fillStyle = '#e53935';
             ctx.beginPath(); ctx.arc(-10, -8, 6, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.arc(10, 6, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(-4, 10, 5, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'tree') {
             ctx.fillStyle = '#388e3c';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -306,13 +358,9 @@ function drawResources(resources, me, scale) {
         } else if (res.type === 'stone') {
             ctx.fillStyle = '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#90a4ae';
-            ctx.beginPath(); ctx.arc(-6, -6, res.radius * 0.4, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'gold') {
             ctx.fillStyle = '#fbc02d';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#fff59d';
-            ctx.beginPath(); ctx.arc(-6, -6, res.radius * 0.35, 0, Math.PI * 2); ctx.fill();
         }
 
         ctx.restore();
@@ -352,7 +400,6 @@ function renderLoop(now) {
     const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
 
-    // Sunucu tikleri arasında yumuşak interpolasyon
     const t = Math.min(1, (now - lastStateTime) / 100);
     const players = getInterpolatedPlayers(t);
 
@@ -367,7 +414,7 @@ function renderLoop(now) {
         drawGrid(scale, me);
 
         ctx.save();
-        ctx.translate(canvas.width / 2 + camShake.x, canvas.height / 2 + camShake.y);
+        ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.scale(scale, scale);
         ctx.translate(-me.x, -me.y);
 
