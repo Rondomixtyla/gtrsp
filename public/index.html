@@ -38,7 +38,7 @@
         /* Sağ Üst Skor */
         #leaderboard {
             position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.4); color: white;
-            padding: 12px; border-radius: 8px; font-size: 13px; width: 170px; border: 2px solid rgba(255,255,255,0.1);
+            padding: 12px; border-radius: 8px; font-size: 13px; width: 180px; border: 2px solid rgba(255,255,255,0.1);
         }
         #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; }
         .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
@@ -63,22 +63,35 @@
         .slot.active { border-color: #ffca28; background: rgba(255,255,255,0.2); }
 
         /* Sol Alt Grid Harita */
-        #minimap {
+        #minimap-container {
             position: absolute; bottom: 15px; left: 15px; width: 100px; height: 100px;
             background: rgba(0,0,0,0.4); border: 2px solid rgba(0,0,0,0.5); border-radius: 6px;
-            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+        }
+        #minimap-grid {
+            width: 100%; height: 100%; display: grid;
+            grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
         }
         .grid-cell { border: 1px solid rgba(255,255,255,0.05); font-size: 8px; color: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; }
+        #player-dot {
+            position: absolute; width: 8px; height: 8px; background: #ff3333;
+            border-radius: 50%; border: 1px solid white; transform: translate(-50%, -50%); pointer-events: none;
+        }
 
-        /* Joystick */
-        #joystick-zone {
-            position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px;
+        /* Çift Joystick (Mobil) */
+        .joystick-zone {
+            position: absolute; bottom: 20px; width: 110px; height: 110px;
             border-radius: 50%; pointer-events: auto; touch-action: none;
+            background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 255, 255, 0.2);
         }
-        #joystick-knob {
-            width: 45px; height: 45px; background: rgba(255,255,255,0.4); border-radius: 50%;
-            position: absolute; top: 37.5px; left: 37.5px; pointer-events: none;
+        #left-joystick-zone { left: 20px; }
+        #right-joystick-zone { right: 20px; }
+
+        .joystick-knob {
+            width: 40px; height: 40px; border-radius: 50%;
+            position: absolute; top: 35px; left: 35px; pointer-events: none;
         }
+        #left-knob { background: rgba(255,255,255,0.4); }
+        #right-knob { background: rgba(255, 87, 34, 0.6); }
     </style>
 </head>
 <body>
@@ -99,19 +112,28 @@
         <div id="leaderboard">
             <h3>Sıralama</h3>
             <div class="lb-row"><span id="lb-name">1. Sen</span><span id="lb-score">0</span></div>
-            <div class="lb-row"><span>2. Bot Alpha</span><span>1.2K</span></div>
-            <div class="lb-row"><span>3. Bot Beta</span><span>450</span></div>
+            <div class="lb-row"><span>2. Bot Alpha (#102)</span><span>1.2K</span></div>
+            <div class="lb-row"><span>3. Bot Beta (#409)</span><span>450</span></div>
         </div>
 
-        <div id="minimap">
-            <div class="grid-cell">A1</div><div class="grid-cell">A2</div><div class="grid-cell">A3</div><div class="grid-cell">A4</div>
-            <div class="grid-cell">B1</div><div class="grid-cell">B2</div><div class="grid-cell">B3</div><div class="grid-cell">B4</div>
-            <div class="grid-cell">C1</div><div class="grid-cell">C2</div><div class="grid-cell">C3</div><div class="grid-cell">C4</div>
-            <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
+        <div id="minimap-container">
+            <div id="minimap-grid">
+                <div class="grid-cell">A1</div><div class="grid-cell">A2</div><div class="grid-cell">A3</div><div class="grid-cell">A4</div>
+                <div class="grid-cell">B1</div><div class="grid-cell">B2</div><div class="grid-cell">B3</div><div class="grid-cell">B4</div>
+                <div class="grid-cell">C1</div><div class="grid-cell">C2</div><div class="grid-cell">C3</div><div class="grid-cell">C4</div>
+                <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
+            </div>
+            <div id="player-dot"></div>
         </div>
 
-        <div id="joystick-zone">
-            <div id="joystick-knob"></div>
+        <!-- Sol Yürüme Joystick -->
+        <div id="left-joystick-zone" class="joystick-zone">
+            <div id="left-knob" class="joystick-knob"></div>
+        </div>
+
+        <!-- Sağ Vurma/Açı Joystick -->
+        <div id="right-joystick-zone" class="joystick-zone">
+            <div id="right-knob" class="joystick-knob"></div>
         </div>
 
         <div id="ui-bottom">
@@ -141,14 +163,13 @@
         // Oyun Durumu
         let gameStarted = false;
         let score = 0;
-        let health = 100;
+        const playerId = "#" + Math.floor(1000 + Math.random() * 9000);
         
         const player = {
-            x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Oyuncu",
+            x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Oyuncu", id: playerId,
             attacking: false, attackAnim: 0
         };
 
-        // Harita Nesneleri (Ağaçlar, Taşlar, İnekler)
         const mapSize = 4000;
         const resources = [];
         for(let i = 0; i < 120; i++) {
@@ -160,18 +181,17 @@
             });
         }
 
-        // Oyunu Başlat
         function startGame() {
             const nick = document.getElementById('nickname').value.trim();
             if(nick) player.name = nick;
-            document.getElementById('lb-name').innerText = "1. " + player.name;
+            document.getElementById('lb-name').innerText = `1. ${player.name} (${player.id})`;
             document.getElementById('menu-overlay').style.display = 'none';
             document.getElementById('ui-layer').style.display = 'block';
             gameStarted = true;
             requestAnimationFrame(gameLoop);
         }
 
-        // Kontroller (WASD & Mouse)
+        // Kontroller
         const keys = {};
         let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
 
@@ -179,46 +199,77 @@
         window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
         window.addEventListener('mousemove', e => {
             mouseX = e.clientX; mouseY = e.clientY;
+            player.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
         });
         window.addEventListener('mousedown', () => doAttack());
 
-        // Mobil Joystick Mantığı
-        const jZone = document.getElementById('joystick-zone');
-        const jKnob = document.getElementById('joystick-knob');
+        // SOL JOYSTICK (Yürüme)
+        const leftZone = document.getElementById('left-joystick-zone');
+        const leftKnob = document.getElementById('left-knob');
         let moveX = 0, moveY = 0;
 
-        jZone.addEventListener('touchstart', handleTouch);
-        jZone.addEventListener('touchmove', handleTouch);
-        jZone.addEventListener('touchend', () => {
-            moveX = 0; moveY = 0;
-            jKnob.style.transform = `translate(0px, 0px)`;
+        setupJoystick(leftZone, leftKnob, (dx, dy) => {
+            moveX = dx; moveY = dy;
         });
 
-        function handleTouch(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = jZone.getBoundingClientRect();
-            const cx = rect.left + rect.width/2;
-            const cy = rect.top + rect.height/2;
-            let dx = touch.clientX - cx;
-            let dy = touch.clientY - cy;
-            const dist = Math.hypot(dx, dy);
-            const maxR = 35;
-            if(dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
-            jKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-            moveX = dx / maxR; moveY = dy / maxR;
+        // SAĞ JOYSTICK (Vurma & Açı)
+        const rightZone = document.getElementById('right-joystick-zone');
+        const rightKnob = document.getElementById('right-knob');
+
+        setupJoystick(rightZone, rightKnob, (dx, dy, active) => {
+            if(active && (dx !== 0 || dy !== 0)) {
+                player.angle = Math.atan2(dy, dx);
+                doAttack();
+            }
+        });
+
+        function setupJoystick(zone, knob, callback) {
+            let activeTouchId = null;
+
+            zone.addEventListener('touchstart', e => handleTouch(e));
+            zone.addEventListener('touchmove', e => handleTouch(e));
+            zone.addEventListener('touchend', e => reset(e));
+            zone.addEventListener('touchcancel', e => reset(e));
+
+            function handleTouch(e) {
+                e.preventDefault();
+                const rect = zone.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+
+                let touch = e.touches[0];
+                if(activeTouchId !== null) {
+                    for(let t of e.touches) {
+                        if(t.identifier === activeTouchId) { touch = t; break; }
+                    }
+                } else {
+                    activeTouchId = touch.identifier;
+                }
+
+                let dx = touch.clientX - cx;
+                let dy = touch.clientY - cy;
+                const dist = Math.hypot(dx, dy);
+                const maxR = 35;
+                if(dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                callback(dx / maxR, dy / maxR, true);
+            }
+
+            function reset(e) {
+                knob.style.transform = `translate(0px, 0px)`;
+                activeTouchId = null;
+                callback(0, 0, false);
+            }
         }
 
-        // Saldırı Fonksiyonu
         function doAttack() {
             if(!gameStarted || player.attacking) return;
             player.attacking = true;
             player.attackAnim = 0;
 
-            // Yakındaki kaynaklara vurma
-            resources.forEach((res, idx) => {
+            resources.forEach(res => {
                 const dist = Math.hypot(res.x - player.x, res.y - player.y);
-                if(dist < player.radius + res.radius + 30) {
+                if(dist < player.radius + res.radius + 35) {
                     score += 50;
                     document.getElementById('lb-score').innerText = score;
                 }
@@ -230,11 +281,17 @@
             slots.forEach((s, i) => s.classList.toggle('active', i === idx));
         }
 
-        // Ana Oyun Döngüsü
+        function updateMinimap() {
+            const dot = document.getElementById('player-dot');
+            const percentX = (player.x / mapSize) * 100;
+            const percentY = (player.y / mapSize) * 100;
+            dot.style.left = `${Math.min(100, Math.max(0, percentX))}%`;
+            dot.style.top = `${Math.min(100, Math.max(0, percentY))}%`;
+        }
+
         function gameLoop() {
             if(!gameStarted) return;
 
-            // Hareket Hesaplama
             let dx = 0, dy = 0;
             if(keys['w'] || keys['arrowup']) dy -= 1;
             if(keys['s'] || keys['arrowdown']) dy += 1;
@@ -245,19 +302,17 @@
 
             if(dx !== 0 || dy !== 0) {
                 const len = Math.hypot(dx, dy);
-                player.x += (dx / len) * player.speed;
-                player.y += (dy / len) * player.speed;
+                player.x = Math.max(50, Math.min(mapSize - 50, player.x + (dx / len) * player.speed));
+                player.y = Math.max(50, Math.min(mapSize - 50, player.y + (dy / len) * player.speed));
             }
 
-            // Açı Hesaplama
-            player.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
+            updateMinimap();
 
-            // Çizim İşlemleri (Kamera Oyuncuyu Takip Eder)
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
 
-            // Arka Plan Grid (Çim Dokusu)
+            // Arka Plan Grid
             ctx.strokeStyle = '#52852c';
             ctx.lineWidth = 4;
             const gridSize = 80;
@@ -273,7 +328,7 @@
                 ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
             }
 
-            // Kaynakları Çiz
+            // Kaynaklar
             resources.forEach(res => {
                 ctx.beginPath();
                 ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
@@ -286,20 +341,18 @@
                 }
             });
 
-            // Oyuncuyu Çiz
+            // Oyuncu
             ctx.save();
             ctx.translate(player.x, player.y);
             ctx.rotate(player.angle);
 
-            // El ve Silah
             let weaponAngle = 0;
             if(player.attacking) {
-                player.attackAnim += 0.2;
-                weaponAngle = Math.sin(player.attackAnim) * 0.8;
+                player.attackAnim += 0.25;
+                weaponAngle = Math.sin(player.attackAnim) * 0.9;
                 if(player.attackAnim >= Math.PI) { player.attacking = false; }
             }
 
-            // Çekiç / Silah
             ctx.save();
             ctx.translate(20, 15);
             ctx.rotate(weaponAngle);
@@ -307,30 +360,27 @@
             ctx.fillStyle = '#607d8b'; ctx.fillRect(20, -12, 15, 24);
             ctx.restore();
 
-            // Eller
             ctx.fillStyle = '#e0ac69';
             ctx.beginPath(); ctx.arc(20, 15, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
             ctx.beginPath(); ctx.arc(20, -15, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
 
-            // Gövde (Karakter Dairesi)
             ctx.beginPath();
             ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
             ctx.fillStyle = '#e0ac69'; ctx.fill();
             ctx.lineWidth = 4; ctx.strokeStyle = '#263238'; ctx.stroke();
 
-            // Gözler
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(10, -7, 4, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(10, 7, 4, 0, Math.PI*2); ctx.fill();
 
             ctx.restore();
 
-            // İsim Etiketi
+            // Oyuncu Adı ve ID
             ctx.font = 'bold 14px Arial';
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
-            ctx.fillText(player.name, player.x, player.y - 35);
+            ctx.fillText(`${player.name} (${player.id})`, player.x, player.y - 35);
 
             ctx.restore();
 
