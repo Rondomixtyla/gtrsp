@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sploop.io Multiplayer - GTRSP</title>
+    <title>Sploop.io Full Clone - GTRSP</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #5c9432; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
         #gameCanvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        
+
         /* GİRİŞ EKRANI */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -28,33 +27,38 @@
         .menu-box button {
             width: 100%; padding: 12px; border-radius: 6px; border: none; background: #8bc34a;
             color: white; font-weight: bold; font-size: 18px; cursor: pointer; text-shadow: 1px 1px 0 #000;
-            transition: 0.2s;
         }
-        .menu-box button:hover { background: #7cb342; }
 
         /* ARAYÜZ KATMANI */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
 
-        /* Sağ Üst Skor */
+        /* CANLI SIRALAMA */
         #leaderboard {
-            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.4); color: white;
-            padding: 12px; border-radius: 8px; font-size: 13px; width: 180px; border: 2px solid rgba(255,255,255,0.1);
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white;
+            padding: 12px; border-radius: 8px; font-size: 13px; min-width: 190px; border: 2px solid rgba(255,255,255,0.1);
         }
-        #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; }
-        .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; color: #ffca28; }
+        .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; gap: 10px; }
+        .lb-row.me { color: #8bc34a; font-weight: bold; }
 
-        /* Alt Yaş & Envanter */
+        /* KAYNAK SAYACI */
+        #resource-bar {
+            position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5);
+            padding: 8px 14px; border-radius: 8px; color: white; font-weight: bold; font-size: 14px;
+            display: flex; gap: 15px; border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        /* ALT PANEL & ENVANTER */
         #ui-bottom {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
-        #age-text { color: white; font-weight: bold; font-size: 14px; text-shadow: 2px 2px 2px black; }
         #health-container {
             width: 220px; height: 16px; background: rgba(0,0,0,0.6); border-radius: 8px;
-            overflow: hidden; border: 2px solid rgba(0,0,0,0.3); position: relative;
+            overflow: hidden; border: 2px solid rgba(0,0,0,0.3);
         }
-        #health-bar { width: 100%; height: 100%; background: #4caf50; transition: width 0.1s; }
-        
+        #health-bar { width: 100%; height: 100%; background: #4caf50; }
+
         #item-bar { display: flex; gap: 8px; pointer-events: auto; }
         .slot {
             width: 50px; height: 50px; background: rgba(0,0,0,0.5); border: 3px solid rgba(255,255,255,0.2);
@@ -62,7 +66,7 @@
         }
         .slot.active { border-color: #ffca28; background: rgba(255,255,255,0.2); }
 
-        /* Sol Alt Grid Harita */
+        /* MINIMAP */
         #minimap-container {
             position: absolute; bottom: 15px; left: 15px; width: 100px; height: 100px;
             background: rgba(0,0,0,0.4); border: 2px solid rgba(0,0,0,0.5); border-radius: 6px;
@@ -71,13 +75,13 @@
             width: 100%; height: 100%; display: grid;
             grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
         }
-        .grid-cell { border: 1px solid rgba(255,255,255,0.05); font-size: 8px; color: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; }
+        .grid-cell { border: 1px solid rgba(255,255,255,0.05); font-size: 8px; color: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; }
         #player-dot {
             position: absolute; width: 8px; height: 8px; background: #ff3333;
             border-radius: 50%; border: 1px solid white; transform: translate(-50%, -50%); pointer-events: none;
         }
 
-        /* Çift Joystick (Mobil) */
+        /* JOYSTICKLER */
         .joystick-zone {
             position: absolute; bottom: 20px; width: 110px; height: 110px;
             border-radius: 50%; pointer-events: auto; touch-action: none;
@@ -85,33 +89,32 @@
         }
         #left-joystick-zone { left: 20px; }
         #right-joystick-zone { right: 20px; }
-
-        .joystick-knob {
-            width: 40px; height: 40px; border-radius: 50%;
-            position: absolute; top: 35px; left: 35px; pointer-events: none;
-        }
+        .joystick-knob { width: 40px; height: 40px; border-radius: 50%; position: absolute; top: 35px; left: 35px; pointer-events: none; }
         #left-knob { background: rgba(255,255,255,0.4); }
         #right-knob { background: rgba(255, 87, 34, 0.6); }
     </style>
 </head>
 <body>
 
-    <!-- GİRİŞ EKRANI -->
     <div id="menu-overlay">
         <div class="menu-box">
             <h1>SPLOOP.IO</h1>
-            <input type="text" id="nickname" placeholder="Oyuncu Adı" value="Oyuncu#123" maxlength="12">
+            <input type="text" id="nickname" placeholder="Oyuncu Adı" value="Oyuncu" maxlength="12">
             <button onclick="startGame()">OYNA</button>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- OYUN ARAYÜZÜ -->
     <div id="ui-layer">
+        <div id="resource-bar">
+            <span>🪵 <span id="res-wood">100</span></span>
+            <span>🪨 <span id="res-stone">50</span></span>
+        </div>
+
         <div id="leaderboard">
             <h3>Sıralama</h3>
-            <div class="lb-row"><span id="lb-name">1. Sen</span><span id="lb-score">0</span></div>
+            <div id="lb-list"></div>
         </div>
 
         <div id="minimap-container">
@@ -124,18 +127,10 @@
             <div id="player-dot"></div>
         </div>
 
-        <!-- Sol Yürüme Joystick -->
-        <div id="left-joystick-zone" class="joystick-zone">
-            <div id="left-knob" class="joystick-knob"></div>
-        </div>
-
-        <!-- Sağ Vurma/Açı Joystick -->
-        <div id="right-joystick-zone" class="joystick-zone">
-            <div id="right-knob" class="joystick-knob"></div>
-        </div>
+        <div id="left-joystick-zone" class="joystick-zone"><div id="left-knob" class="joystick-knob"></div></div>
+        <div id="right-joystick-zone" class="joystick-zone"><div id="right-knob" class="joystick-knob"></div></div>
 
         <div id="ui-bottom">
-            <div id="age-text">AGE 1</div>
             <div id="health-container"><div id="health-bar"></div></div>
             <div id="item-bar">
                 <div class="slot active" onclick="selectSlot(0)">🔨</div>
@@ -147,26 +142,24 @@
         </div>
     </div>
 
-    <!-- Socket.io Kütüphanesi -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
         resize();
 
         let gameStarted = false;
         let otherPlayers = {};
-        
+        let structures = [];
+        let selectedSlot = 0; // 0: Çekiç, 4: Ahşap Duvar
+
         const player = {
             x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Oyuncu", score: 0,
-            attacking: false, attackAnim: 0
+            wood: 100, stone: 50, attacking: false, attackAnim: 0
         };
 
         const mapSize = 4000;
@@ -180,32 +173,23 @@
             });
         }
 
-        socket.on('currentPlayers', (players) => {
-            otherPlayers = players;
+        socket.on('initGame', (data) => {
+            otherPlayers = data.players;
+            structures = data.structures;
             if(otherPlayers[socket.id]) {
                 player.x = otherPlayers[socket.id].x;
                 player.y = otherPlayers[socket.id].y;
             }
         });
 
-        socket.on('newPlayer', (data) => {
-            otherPlayers[data.id] = data.player;
-        });
-
-        socket.on('playerMoved', (data) => {
-            if(otherPlayers[data.id]) {
-                otherPlayers[data.id] = data.player;
-            }
-        });
-
-        socket.on('removePlayer', (id) => {
-            delete otherPlayers[id];
-        });
+        socket.on('newPlayer', p => otherPlayers[p.id] = p);
+        socket.on('playerMoved', p => { if(otherPlayers[p.id]) otherPlayers[p.id] = p; });
+        socket.on('removePlayer', id => delete otherPlayers[id]);
+        socket.on('structurePlaced', st => structures.push(st));
 
         function startGame() {
             const nick = document.getElementById('nickname').value.trim();
             if(nick) player.name = nick;
-            document.getElementById('lb-name').innerText = `1. ${player.name}`;
             document.getElementById('menu-overlay').style.display = 'none';
             document.getElementById('ui-layer').style.display = 'block';
             gameStarted = true;
@@ -221,15 +205,13 @@
             mouseX = e.clientX; mouseY = e.clientY;
             player.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
         });
-        window.addEventListener('mousedown', () => doAttack());
+        window.addEventListener('mousedown', () => doAction());
 
         const leftZone = document.getElementById('left-joystick-zone');
         const leftKnob = document.getElementById('left-knob');
         let moveX = 0, moveY = 0;
 
-        setupJoystick(leftZone, leftKnob, (dx, dy) => {
-            moveX = dx; moveY = dy;
-        });
+        setupJoystick(leftZone, leftKnob, (dx, dy) => { moveX = dx; moveY = dy; });
 
         const rightZone = document.getElementById('right-joystick-zone');
         const rightKnob = document.getElementById('right-knob');
@@ -237,7 +219,7 @@
         setupJoystick(rightZone, rightKnob, (dx, dy, active) => {
             if(active && (dx !== 0 || dy !== 0)) {
                 player.angle = Math.atan2(dy, dx);
-                doAttack();
+                doAction();
             }
         });
 
@@ -258,10 +240,8 @@
                     for(let t of e.touches) { if(t.identifier === activeTouchId) { touch = t; break; } }
                 } else { activeTouchId = touch.identifier; }
 
-                let dx = touch.clientX - cx;
-                let dy = touch.clientY - cy;
-                const dist = Math.hypot(dx, dy);
-                const maxR = 35;
+                let dx = touch.clientX - cx, dy = touch.clientY - cy;
+                const dist = Math.hypot(dx, dy), maxR = 35;
                 if(dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
                 knob.style.transform = `translate(${dx}px, ${dy}px)`;
                 callback(dx / maxR, dy / maxR, true);
@@ -274,31 +254,67 @@
             }
         }
 
-        function doAttack() {
-            if(!gameStarted || player.attacking) return;
+        function doAction() {
+            if(!gameStarted) return;
+
+            // Slot 4 seçiliyse Duvar Koy
+            if(selectedSlot === 4) {
+                if(player.wood >= 20) {
+                    player.wood -= 20;
+                    document.getElementById('res-wood').innerText = player.wood;
+                    const wallX = player.x + Math.cos(player.angle) * 60;
+                    const wallY = player.y + Math.sin(player.angle) * 60;
+                    socket.emit('placeStructure', { x: wallX, y: wallY, type: 'wall', radius: 25 });
+                }
+                return;
+            }
+
+            // Vurma Aksi
+            if(player.attacking) return;
             player.attacking = true;
             player.attackAnim = 0;
 
             resources.forEach(res => {
                 const dist = Math.hypot(res.x - player.x, res.y - player.y);
                 if(dist < player.radius + res.radius + 35) {
-                    player.score += 50;
-                    document.getElementById('lb-score').innerText = player.score;
+                    if(res.type === 'tree') {
+                        player.wood += 15;
+                        document.getElementById('res-wood').innerText = player.wood;
+                    } else {
+                        player.stone += 10;
+                        document.getElementById('res-stone').innerText = player.stone;
+                    }
+                    player.score += 25;
                 }
             });
         }
 
         function selectSlot(idx) {
+            selectedSlot = idx;
             const slots = document.querySelectorAll('.slot');
             slots.forEach((s, i) => s.classList.toggle('active', i === idx));
         }
 
+        function updateLeaderboard() {
+            const list = Object.values(otherPlayers);
+            list.push(player);
+            list.sort((a,b) => b.score - a.score);
+
+            const lbContainer = document.getElementById('lb-list');
+            lbContainer.innerHTML = '';
+            list.forEach((p, index) => {
+                const isMe = p.name === player.name && p.score === player.score;
+                const row = document.createElement('div');
+                row.className = `lb-row ${isMe ? 'me' : ''}`;
+                row.innerHTML = `<span>${index+1}. ${p.name}</span><span>${p.score}</span>`;
+                lbContainer.appendChild(row);
+            });
+        }
+
         function updateMinimap() {
             const dot = document.getElementById('player-dot');
-            const percentX = (player.x / mapSize) * 100;
-            const percentY = (player.y / mapSize) * 100;
-            dot.style.left = `${Math.min(100, Math.max(0, percentX))}%`;
-            dot.style.top = `${Math.min(100, Math.max(0, percentY))}%`;
+            dot.style.left = `${Math.min(100, Math.max(0, (player.x / mapSize) * 100))}%`;
+            dot.style.top = `${Math.min(100, Math.max(0, (player.y / mapSize) * 100))}%`;
         }
 
         function drawCharacter(p, isMe) {
@@ -306,10 +322,7 @@
             ctx.translate(p.x, p.y);
             ctx.rotate(p.angle);
 
-            let weaponAngle = 0;
-            if(p.attacking) {
-                weaponAngle = Math.sin(Date.now() / 50) * 0.9;
-            }
+            let weaponAngle = p.attacking ? Math.sin(Date.now() / 50) * 0.9 : 0;
 
             ctx.save();
             ctx.translate(20, 15);
@@ -337,7 +350,7 @@
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
-            ctx.fillText(p.name || "Misafir", p.x, p.y - 35);
+            ctx.fillText(p.name || "Oyuncu", p.x, p.y - 35);
         }
 
         function gameLoop() {
@@ -355,36 +368,40 @@
                 const len = Math.hypot(dx, dy);
                 player.x = Math.max(50, Math.min(mapSize - 50, player.x + (dx / len) * player.speed));
                 player.y = Math.max(50, Math.min(mapSize - 50, player.y + (dy / len) * player.speed));
-                
-                socket.emit('playerUpdate', {
-                    x: player.x, y: player.y, angle: player.angle,
-                    name: player.name, score: player.score, attacking: player.attacking
-                });
             }
 
+            socket.emit('playerUpdate', {
+                x: player.x, y: player.y, angle: player.angle,
+                name: player.name, score: player.score, attacking: player.attacking
+            });
+
             updateMinimap();
+            updateLeaderboard();
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
 
-            // Arka Plan Grid
-            ctx.strokeStyle = '#52852c';
-            ctx.lineWidth = 4;
+            // Grid Arka Plan
+            ctx.strokeStyle = '#52852c'; ctx.lineWidth = 4;
             const gridSize = 80;
             const startX = Math.floor((player.x - canvas.width) / gridSize) * gridSize;
             const endX = Math.floor((player.x + canvas.width) / gridSize) * gridSize;
             const startY = Math.floor((player.y - canvas.height) / gridSize) * gridSize;
             const endY = Math.floor((player.y + canvas.height) / gridSize) * gridSize;
 
-            for(let x = startX; x < endX; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
-            }
-            for(let y = startY; y < endY; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
-            }
+            for(let x = startX; x < endX; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
+            for(let y = startY; y < endY; y += gridSize) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
 
-            // Kaynaklar
+            // Yapılar (Duvarlar)
+            structures.forEach(st => {
+                ctx.beginPath();
+                ctx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#a17a4a'; ctx.fill();
+                ctx.lineWidth = 5; ctx.strokeStyle = '#5c4018'; ctx.stroke();
+            });
+
+            // Kaynaklar (Ağaç / Taş)
             resources.forEach(res => {
                 ctx.beginPath();
                 ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
@@ -399,12 +416,10 @@
 
             // Diğer Oyuncuları Çiz
             for (let id in otherPlayers) {
-                if (id !== socket.id) {
-                    drawCharacter(otherPlayers[id], false);
-                }
+                if (id !== socket.id) drawCharacter(otherPlayers[id], false);
             }
 
-            // Kendi Karakterimizi Çiz
+            // Kendimizi Çiz
             drawCharacter(player, true);
 
             ctx.restore();

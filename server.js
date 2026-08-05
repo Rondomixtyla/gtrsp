@@ -9,38 +9,41 @@ const io = new Server(server);
 app.use(express.static('public'));
 
 const players = {};
+const structures = []; // Haritadaki duvarlar/kapanlar
 
 io.on('connection', (socket) => {
-    console.log(`Oyuncu bağlandı: ${socket.id}`);
-
     players[socket.id] = {
+        id: socket.id,
         x: Math.random() * 3000 + 500,
         y: Math.random() * 3000 + 500,
         radius: 25,
         angle: 0,
-        name: "Misafir",
-        id: "#" + Math.floor(1000 + Math.random() * 9000),
+        name: "Oyuncu",
         score: 0,
+        wood: 100,
+        stone: 50,
         attacking: false
     };
 
-    socket.emit('currentPlayers', players);
-    socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
+    // İlk bağlanan oyuncuya mevcut durumları gönder
+    socket.emit('initGame', { players, structures });
+    socket.broadcast.emit('newPlayer', players[socket.id]);
 
+    // Oyuncu hareket ve durum güncellemesi
     socket.on('playerUpdate', (data) => {
         if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].angle = data.angle;
-            players[socket.id].name = data.name;
-            players[socket.id].score = data.score;
-            players[socket.id].attacking = data.attacking;
-            socket.broadcast.emit('playerMoved', { id: socket.id, player: players[socket.id] });
+            Object.assign(players[socket.id], data);
+            socket.broadcast.emit('playerMoved', players[socket.id]);
         }
     });
 
+    // Yapı koyma etkinliği (Duvar vb.)
+    socket.on('placeStructure', (structData) => {
+        structures.push(structData);
+        io.emit('structurePlaced', structData);
+    });
+
     socket.on('disconnect', () => {
-        console.log(`Oyuncu ayrıldı: ${socket.id}`);
         delete players[socket.id];
         io.emit('removePlayer', socket.id);
     });
