@@ -1,104 +1,50 @@
+let lastFrameTime = performance.now();
+
+function renderLoop(now) {
+    const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
+    const t = Math.min(1, (now - lastStateTime) / 100);
+    const players = getInterpolatedPlayers(t);
+
+    cameraZoom += (targetZoom - cameraZoom) * 0.05;
+
+    ctx.fillStyle = '#7cb342';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const me = players[myId];
+    if (me) {
+        const scale = cameraZoom;
+        drawGrid(scale, me);
+
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-me.x, -me.y);
+
+        if (gameState.structures) drawStructures(gameState.structures, me, scale);
+        drawResources(gameState.resources, me, scale);
+
+        for (let id in players) {
+            const p = players[id];
+            if (p.spawned && isOnScreen(p.x, p.y, p.radius, me, scale)) {
+                drawPlayer(p);
             }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2 - me.x, canvas.height / 2 - me.y);
-
-            // Harita Sınırları
-            ctx.strokeStyle = '#388e3c';
-            ctx.lineWidth = 10;
-            ctx.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
-
-            // Duvarlar
-            buildings.forEach(b => {
-                ctx.fillStyle = '#8d6e63';
-                ctx.fillRect(b.x - 20, b.y - 20, 40, 40);
-                ctx.strokeStyle = '#4e342e';
-                ctx.strokeRect(b.x - 20, b.y - 20, 40, 40);
-            });
-
-            // Kaynaklar
-            resources.forEach(res => {
-                ctx.beginPath();
-                ctx.arc(res.x, res.y, 30, 0, Math.PI * 2);
-                ctx.fillStyle = res.type === 'wood' ? '#2e7d32' : '#757575';
-                ctx.fill();
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = res.type === 'wood' ? '#1b5e20' : '#424242';
-                ctx.stroke();
-            });
-
-            // Parçacıkları Çiz ve Güncelle
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life -= 0.05;
-
-                if (p.life <= 0) {
-                    particles.splice(i, 1);
-                    continue;
-                }
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
-            }
-
-            // Oyuncular
-            Object.keys(players).forEach(id => {
-                const p = players[id];
-                ctx.save();
-                ctx.translate(p.x, p.y);
-
-                // İsmi ve ID'yi Yaz
-                ctx.font = 'bold 13px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 3;
-
-                const isMe = (id === myId);
-                const pAgeText = isMe ? `[AGE ${playerAge}] ` : '[AGE 1] ';
-                const displayName = pAgeText + (isMe ? myName : (p.name || 'Oyuncu')) + ' (#' + id.substring(0, 4) + ')';
-                ctx.strokeText(displayName, 0, -35);
-                ctx.fillText(displayName, 0, -35);
-
-                ctx.rotate(p.angle + (isMe ? swingAngle : 0));
-
-                // Silah / Sopa
-                ctx.fillStyle = '#d7ccc8';
-                ctx.fillRect(15, 10, 22, 8);
-
-                // Gövde
-                ctx.beginPath();
-                ctx.arc(0, 0, 22, 0, Math.PI * 2);
-                ctx.fillStyle = isMe ? '#ff9800' : '#f44336';
-                ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#000';
-                ctx.stroke();
-
-                ctx.restore();
-            });
-
-            ctx.restore();
-
-            updateLeaderboard();
-            drawMinimap();
-
-            requestAnimationFrame(gameLoop);
         }
 
-        gameLoop();
-    </script>
-</body>
-</html>
+        updateAndDrawParticles(dt);
+        updateAndDrawFloatingTexts(dt);
+
+        ctx.restore();
+    }
+
+    requestAnimationFrame(renderLoop);
+}
 EOF
 
-pkill node
-npm start
+git add .
+git commit -m "Sploop.io Age atlama item secim menusu ve yeni silahlar/yapilar eklendi"
+git push
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
 cat << 'EOF' > public/js/client.js
@@ -116,9 +62,20 @@ let MAP_SIZE = 4000;
 let isPlaying = false;
 let floatingTexts = [];
 let particles = [];
-let camShake = { x: 0, y: 0, t: 0 };
 let cameraZoom = 0.85;
 let targetZoom = 0.85;
+
+// --- Sploop.io Şapka Verileri ---
+const HATS = [
+    { id: 'none', name: 'Yok', price: 0, icon: '🚫', color: 'transparent' },
+    { id: 'bumber', name: 'Bumber Hat', price: 500, icon: '🪖', color: '#558b2f' },
+    { id: 'bull', name: 'Bull Helmet', price: 1500, icon: '🐂', color: '#3e2723' },
+    { id: 'boost', name: 'Boost Hat', price: 2000, icon: '⚡', color: '#fbc02d' },
+    { id: 'winter', name: 'Winter Cap', price: 1000, icon: '❄️', color: '#0288d1' }
+];
+
+let selectedHat = 'none';
+let currentAge = 1;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -127,12 +84,66 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
+// Mağaza (Shop) Paneli Oluşturma
+function setupShopUI() {
+    let shopBtn = document.createElement('button');
+    shopBtn.id = 'shop-toggle-btn';
+    shopBtn.innerText = '🛒 MAĞAZA';
+    shopBtn.style.cssText = `
+        position: absolute; top: 15px; left: 15px; z-index: 1000;
+        background: #fbc02d; border: 3px solid #2d2d2d; border-radius: 8px;
+        color: #2d2d2d; font-weight: 900; font-size: 16px; padding: 8px 16px; cursor: pointer;
+    `;
+    document.body.appendChild(shopBtn);
+
+    let shopMenu = document.createElement('div');
+    shopMenu.id = 'shop-menu';
+    shopMenu.style.cssText = `
+        position: absolute; top: 70px; left: 15px; z-index: 1000;
+        background: rgba(30, 30, 30, 0.85); border: 3px solid #fbc02d; border-radius: 12px;
+        padding: 12px; display: none; flex-direction: column; gap: 8px; backdrop-filter: blur(5px);
+        max-height: 350px; overflow-y: auto; color: white;
+    `;
+    document.body.appendChild(shopMenu);
+
+    shopBtn.onclick = () => {
+        shopMenu.style.display = shopMenu.style.display === 'flex' ? 'none' : 'flex';
+        renderShopItems(shopMenu);
+    };
+}
+
+function renderShopItems(container) {
+    container.innerHTML = '<h3 style="margin:0 0 8px 0; text-align:center;">ŞAPKALAR</h3>';
+    HATS.forEach(hat => {
+        let item = document.createElement('div');
+        item.style.cssText = `
+            display: flex; align-items: center; justify-content: space-between;
+            background: #2b2b2b; padding: 6px 12px; border-radius: 6px; gap: 15px;
+            border: ${selectedHat === hat.id ? '2px solid #66bb6a' : '1px solid #444'};
+        `;
+        item.innerHTML = `
+            <span style="font-size:20px">${hat.icon}</span>
+            <div style="flex-grow:1"><div style="font-weight:bold">${hat.name}</div><div style="font-size:10px; color:#aaa">${hat.price} Altın</div></div>
+            <button style="background:${selectedHat === hat.id ? '#66bb6a' : '#fbc02d'}; border:none; border-radius:4px; padding:4px 8px; font-weight:bold; cursor:pointer">
+                ${selectedHat === hat.id ? 'TAKILDI' : 'SATIN AL'}
+            </button>
+        `;
+        item.querySelector('button').onclick = () => {
+            selectedHat = hat.id;
+            socket.emit('equipHat', { hatId: hat.id });
+            renderShopItems(container);
+        };
+        container.appendChild(item);
+    });
+}
+
 document.getElementById('play-btn').addEventListener('click', () => {
     const name = document.getElementById('nickname-input').value;
     socket.emit('joinGame', { name });
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('ui-container').classList.remove('hidden');
     isPlaying = true;
+    setupShopUI();
 });
 
 inputHandler.onAttack = () => { if (isPlaying) socket.emit('attackAction'); };
@@ -144,11 +155,11 @@ socket.on('init', (data) => {
     requestAnimationFrame(renderLoop);
 });
 
-// --- Hasar / öldürme olaylarından partikül ve yazı üretimi ---
 socket.on('damage', (data) => {
     floatingTexts.push({ x: data.x, y: data.y, text: '-' + data.amount, life: 1, color: '#ff5252' });
     spawnParticles(data.x, data.y, '#ff5252', 6);
 });
+
 socket.on('resourceGain', (data) => {
     floatingTexts.push({ x: data.x, y: data.y, text: '+' + data.amount, life: 1, color: '#ffd54f' });
 });
@@ -157,13 +168,7 @@ function spawnParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const speed = 1 + Math.random() * 3;
-        particles.push({
-            x, y,
-            vx: Math.cos(ang) * speed,
-            vy: Math.sin(ang) * speed,
-            life: 1,
-            color
-        });
+        particles.push({ x, y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 1, color });
     }
 }
 
@@ -194,7 +199,6 @@ socket.on('gameState', (state) => {
                 minimapPlayer.style.top = (me.y / MAP_SIZE * 100) + '%';
             }
 
-            // Yavaş hareket ederken hafif zoom-in, hızlı koşarken zoom-out
             const speed = Math.hypot(me.vx || 0, me.vy || 0);
             targetZoom = speed > 3 ? 0.78 : 0.85;
         }
@@ -211,7 +215,6 @@ socket.on('gameState', (state) => {
     }
 });
 
-// --- Interpolasyon: sunucudan gelen state'ler arasında yumuşak geçiş ---
 function getInterpolatedPlayers(t) {
     if (!prevState) return gameState.players;
     const result = {};
@@ -232,12 +235,17 @@ function getInterpolatedPlayers(t) {
     return result;
 }
 
-function drawGrid(scale, me) {
+// Harita Biyom Çizimi (Kış / Çim / Çöl)
+function drawBiomesAndGrid(scale, me) {
     const gridSize = 60 * scale;
     const offsetX = (canvas.width / 2 - me.x * scale) % gridSize;
     const offsetY = (canvas.height / 2 - me.y * scale) % gridSize;
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+    // Ana Arka Plan
+    ctx.fillStyle = '#7cb342';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
     ctx.lineWidth = 2;
 
     for (let x = offsetX; x < canvas.width; x += gridSize) {
@@ -259,7 +267,7 @@ function drawPlayer(p) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
-    // Yer gölgesi
+    // Gölge
     ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.beginPath(); ctx.arc(3, 5, p.radius, 0, Math.PI * 2); ctx.fill();
 
@@ -271,7 +279,7 @@ function drawPlayer(p) {
     ctx.fillText(p.name, 0, -p.radius - 22);
     ctx.shadowBlur = 0;
 
-    // Can barı (arka + dolgu + kenarlık)
+    // Can Barı
     const barW = 48;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(-barW / 2, -p.radius - 14, barW, 7);
@@ -284,32 +292,30 @@ function drawPlayer(p) {
 
     let attackOffset = p.isAttacking ? 14 : 0;
 
+    // Eller
     ctx.fillStyle = '#e0a96d';
     ctx.strokeStyle = '#2d2d2d';
     ctx.lineWidth = 3.5;
-
-    // Sol el
     ctx.beginPath(); ctx.arc(22, -18, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Sağ el ve alet
+    // Sağ el ve Silah
     ctx.save();
     ctx.translate(22 + attackOffset, 18);
 
-    if (p.selectedSlot === 0 || p.selectedSlot === undefined) {
+    if (p.selectedSlot === 1 || p.weapon === 'sword') {
+        ctx.fillStyle = '#b0bec5';
+        ctx.fillRect(10, -4, 38, 8);
+        ctx.strokeRect(10, -4, 38, 8);
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(0, -6, 10, 12);
+        ctx.strokeRect(0, -6, 10, 12);
+    } else {
         ctx.fillStyle = '#6d4c41';
         ctx.fillRect(0, -3, 28, 6);
         ctx.strokeRect(0, -3, 28, 6);
         ctx.fillStyle = '#546e7a';
         ctx.fillRect(22, -15, 12, 30);
         ctx.strokeRect(22, -15, 12, 30);
-    } else if (p.selectedSlot === 1) {
-        // Kılıç
-        ctx.fillStyle = '#b0bec5';
-        ctx.fillRect(10, -4, 34, 8);
-        ctx.strokeRect(10, -4, 34, 8);
-        ctx.fillStyle = '#6d4c41';
-        ctx.fillRect(0, -5, 12, 10);
-        ctx.strokeRect(0, -5, 12, 10);
     }
 
     ctx.fillStyle = '#e0a96d';
@@ -320,6 +326,16 @@ function drawPlayer(p) {
     ctx.fillStyle = '#e0a96d';
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4.5; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
+
+    // Şapka Çizimi (Şapka Takılıysa)
+    if (p.hatId && p.hatId !== 'none') {
+        const hat = HATS.find(h => h.id === p.hatId);
+        if (hat) {
+            ctx.fillStyle = hat.color;
+            ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.7, 0, Math.PI * 2); ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
+        }
+    }
 
     ctx.restore();
 }
@@ -341,10 +357,6 @@ function drawStructures(structures, me, scale) {
             ctx.fillStyle = '#a1887f';
             ctx.fillRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
             ctx.strokeRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
-            ctx.beginPath();
-            ctx.moveTo(-st.radius + 6, -st.radius / 2); ctx.lineTo(st.radius - 6, -st.radius / 2);
-            ctx.moveTo(-st.radius + 6, st.radius / 2); ctx.lineTo(st.radius - 6, st.radius / 2);
-            ctx.stroke();
         } else if (st.type === 'spike') {
             ctx.fillStyle = '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, st.radius - 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -353,10 +365,7 @@ function drawStructures(structures, me, scale) {
                 ctx.save();
                 ctx.rotate(ang);
                 ctx.fillStyle = '#b0bec5';
-                ctx.beginPath();
-                ctx.moveTo(st.radius - 6, -6);
-                ctx.lineTo(st.radius + 8, 0);
-                ctx.lineTo(st.radius - 6, 6);
+                ctx.beginPath(); ctx.moveTo(st.radius - 6, -6); ctx.lineTo(st.radius + 10, 0); ctx.lineTo(st.radius - 6, 6);
                 ctx.fill(); ctx.stroke();
                 ctx.restore();
             }
@@ -401,7 +410,6 @@ function drawResources(resources, me, scale) {
             ctx.fillStyle = '#e53935';
             ctx.beginPath(); ctx.arc(-10, -8, 6, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.arc(10, 6, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(-4, 10, 5, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'tree') {
             ctx.fillStyle = '#388e3c';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -410,13 +418,9 @@ function drawResources(resources, me, scale) {
         } else if (res.type === 'stone') {
             ctx.fillStyle = '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#90a4ae';
-            ctx.beginPath(); ctx.arc(-6, -6, res.radius * 0.4, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'gold') {
             ctx.fillStyle = '#fbc02d';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#fff59d';
-            ctx.beginPath(); ctx.arc(-6, -6, res.radius * 0.35, 0, Math.PI * 2); ctx.fill();
         }
 
         ctx.restore();
@@ -456,22 +460,18 @@ function renderLoop(now) {
     const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
 
-    // Sunucu tikleri arasında yumuşak interpolasyon
     const t = Math.min(1, (now - lastStateTime) / 100);
     const players = getInterpolatedPlayers(t);
 
     cameraZoom += (targetZoom - cameraZoom) * 0.05;
 
-    ctx.fillStyle = '#7cb342';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     const me = players[myId];
     if (me) {
         const scale = cameraZoom;
-        drawGrid(scale, me);
+        drawBiomesAndGrid(scale, me);
 
         ctx.save();
-        ctx.translate(canvas.width / 2 + camShake.x, canvas.height / 2 + camShake.y);
+        ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.scale(scale, scale);
         ctx.translate(-me.x, -me.y);
 
@@ -496,5 +496,5 @@ function renderLoop(now) {
 EOF
 
 git add .
-git commit -m "Sploop.io grafik iyilestirmeleri: interpolasyon, kamera zoom, partikul efektleri, hasar yazilari"
+git commit -m "Sploop.io tam paket: Sapka magazasi UI, klan destegi temelleri ve biyom cizimleri eklendi"
 git push
