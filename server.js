@@ -9,89 +9,44 @@ const io = new Server(server);
 app.use(express.static('public'));
 
 const players = {};
-const resources = [];
-const buildings = [];
-
-for (let i = 0; i < 30; i++) {
-    resources.push({
-        id: i,
-        x: Math.random() * 1800 + 100,
-        y: Math.random() * 1800 + 100,
-        type: Math.random() > 0.4 ? 'wood' : 'stone',
-        hp: 100
-    });
-}
 
 io.on('connection', (socket) => {
-    console.log('Yeni oyuncu katıldı:', socket.id);
+    console.log(`Oyuncu bağlandı: ${socket.id}`);
 
     players[socket.id] = {
-        x: Math.random() * 1000 + 200,
-        y: Math.random() * 1000 + 200,
-        wood: 50,
-        stone: 50,
-        hp: 100,
-        angle: 0
+        x: Math.random() * 3000 + 500,
+        y: Math.random() * 3000 + 500,
+        radius: 25,
+        angle: 0,
+        name: "Misafir",
+        id: "#" + Math.floor(1000 + Math.random() * 9000),
+        score: 0,
+        attacking: false
     };
 
-    socket.emit('init', { id: socket.id, players, resources, buildings });
+    socket.emit('currentPlayers', players);
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
 
-    socket.on('playerMove', (data) => {
-        const p = players[socket.id];
-        if (p) {
-            p.x += data.dx;
-            p.y += data.dy;
-            p.angle = data.angle;
-            io.emit('playerMoved', { id: socket.id, x: p.x, y: p.y, angle: p.angle });
-        }
-    });
-
-    socket.on('hit', () => {
-        const p = players[socket.id];
-        if (!p) return;
-
-        resources.forEach((res) => {
-            const dist = Math.hypot(p.x - res.x, p.y - res.y);
-            if (dist < 70) {
-                res.hp -= 25;
-                if (res.type === 'wood') p.wood += 10;
-                if (res.type === 'stone') p.stone += 10;
-
-                socket.emit('updateStats', { wood: p.wood, stone: p.stone, hp: p.hp });
-
-                if (res.hp <= 0) {
-                    res.hp = 100;
-                    res.x = Math.random() * 1800 + 100;
-                    res.y = Math.random() * 1800 + 100;
-                }
-                io.emit('updateResources', resources);
-            }
-        });
-    });
-
-    socket.on('buildWall', () => {
-        const p = players[socket.id];
-        if (p && p.wood >= 10) {
-            p.wood -= 10;
-            const wallX = p.x + Math.cos(p.angle) * 50;
-            const wallY = p.y + Math.sin(p.angle) * 50;
-
-            const newBuilding = { id: Date.now(), x: wallX, y: wallY, type: 'wall' };
-            buildings.push(newBuilding);
-
-            socket.emit('updateStats', { wood: p.wood, stone: p.stone, hp: p.hp });
-            io.emit('newBuilding', newBuilding);
+    socket.on('playerUpdate', (data) => {
+        if (players[socket.id]) {
+            players[socket.id].x = data.x;
+            players[socket.id].y = data.y;
+            players[socket.id].angle = data.angle;
+            players[socket.id].name = data.name;
+            players[socket.id].score = data.score;
+            players[socket.id].attacking = data.attacking;
+            socket.broadcast.emit('playerMoved', { id: socket.id, player: players[socket.id] });
         }
     });
 
     socket.on('disconnect', () => {
+        console.log(`Oyuncu ayrıldı: ${socket.id}`);
         delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
+        io.emit('removePlayer', socket.id);
     });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`\n🚀 Oyun Sunucusu Çalışıyor!\nAdres: http://localhost:${PORT}\n`);
+    console.log(`Sunucu ${PORT} portunda çalışıyor.`);
 });

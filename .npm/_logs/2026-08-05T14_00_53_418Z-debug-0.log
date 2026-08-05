@@ -1,0 +1,116 @@
+0 verbose cli /data/data/com.termux/files/usr/bin/node /data/data/com.termux/files/usr/bin/npm
+1 info using npm@11.17.0
+2 info using node@v26.3.1
+3 silly config load:file:/data/data/com.termux/files/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/data/data/com.termux/files/home/.npmrc
+5 silly config load:file:/data/data/com.termux/files/usr/etc/npmrc
+6 verbose title npm install socket.io express
+7 verbose argv "install" "socket.io" "express"
+8 verbose logfile logs-max:10 dir:/data/data/com.termux/files/home/.npm/_logs/2026-08-05T14_00_53_418Z-
+9 verbose logfile /data/data/com.termux/files/home/.npm/_logs/2026-08-05T14_00_53_418Z-debug-0.log
+10 silly logfile start cleaning logs, removing 1 files
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:1079771136 maxSize:269942784 maxEntrySize:134971392
+13 silly idealTree buildDeps
+14 silly fetch manifest express@^4.18.2
+15 silly packumentCache full:https://registry.npmjs.org/express cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/express 914ms (cache revalidated)
+17 silly packumentCache full:https://registry.npmjs.org/express set size:804956 disposed:false
+18 silly fetch manifest socket.io@^4.7.2
+19 silly packumentCache full:https://registry.npmjs.org/socket.io cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/socket.io 176ms (cache revalidated)
+21 silly packumentCache full:https://registry.npmjs.org/socket.io set size:379231 disposed:false
+22 silly placeDep ROOT express@4.22.2 REPLACE for: sploop-termux@1.0.0 want: ^4.18.2
+23 silly placeDep ROOT socket.io@4.8.3 REPLACE for: sploop-termux@1.0.0 want: ^4.7.2
+24 silly reify moves {}
+25 silly audit bulk request {
+25 silly audit   '@socket.io/component-emitter': [ '3.1.2' ],
+25 silly audit   '@types/cors': [ '2.8.19' ],
+25 silly audit   '@types/node': [ '26.1.2' ],
+25 silly audit   '@types/ws': [ '8.18.1' ],
+25 silly audit   accepts: [ '1.3.8' ],
+25 silly audit   'array-flatten': [ '1.1.1' ],
+25 silly audit   base64id: [ '2.0.0' ],
+25 silly audit   'body-parser': [ '1.20.6' ],
+25 silly audit   bytes: [ '3.1.2' ],
+25 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+25 silly audit   'call-bound': [ '1.0.4' ],
+25 silly audit   'content-disposition': [ '0.5.4' ],
+25 silly audit   'content-type': [ '1.0.5' ],
+25 silly audit   cookie: [ '0.7.2' ],
+25 silly audit   'cookie-signature': [ '1.0.7' ],
+25 silly audit   cors: [ '2.8.6' ],
+25 silly audit   debug: [ '2.6.9', '4.4.3' ],
+25 silly audit   depd: [ '2.0.0' ],
+25 silly audit   destroy: [ '1.2.0' ],
+25 silly audit   'dunder-proto': [ '1.0.1' ],
+25 silly audit   'ee-first': [ '1.1.1' ],
+25 silly audit   encodeurl: [ '2.0.0' ],
+25 silly audit   'engine.io': [ '6.6.9' ],
+25 silly audit   'engine.io-parser': [ '5.2.3' ],
+25 silly audit   ms: [ '2.1.3', '2.0.0' ],
+25 silly audit   'es-define-property': [ '1.0.1' ],
+25 silly audit   'es-errors': [ '1.3.0' ],
+25 silly audit   'es-object-atoms': [ '1.1.2' ],
+25 silly audit   'escape-html': [ '1.0.3' ],
+25 silly audit   etag: [ '1.8.1' ],
+25 silly audit   finalhandler: [ '1.3.2' ],
+25 silly audit   forwarded: [ '0.2.0' ],
+25 silly audit   fresh: [ '0.5.2' ],
+25 silly audit   'function-bind': [ '1.1.2' ],
+25 silly audit   'get-intrinsic': [ '1.3.0' ],
+25 silly audit   'get-proto': [ '1.0.1' ],
+25 silly audit   gopd: [ '1.2.0' ],
+25 silly audit   'has-symbols': [ '1.1.0' ],
+25 silly audit   hasown: [ '2.0.4' ],
+25 silly audit   'http-errors': [ '2.0.1' ],
+25 silly audit   'iconv-lite': [ '0.4.24' ],
+25 silly audit   inherits: [ '2.0.4' ],
+25 silly audit   'ipaddr.js': [ '1.9.1' ],
+25 silly audit   'math-intrinsics': [ '1.1.0' ],
+25 silly audit   'media-typer': [ '0.3.0' ],
+25 silly audit   'merge-descriptors': [ '1.0.3' ],
+25 silly audit   methods: [ '1.1.2' ],
+25 silly audit   mime: [ '1.6.0' ],
+25 silly audit   'mime-db': [ '1.52.0' ],
+25 silly audit   'mime-types': [ '2.1.35' ],
+25 silly audit   negotiator: [ '0.6.3' ],
+25 silly audit   'object-assign': [ '4.1.1' ],
+25 silly audit   'object-inspect': [ '1.13.4' ],
+25 silly audit   'on-finished': [ '2.4.1' ],
+25 silly audit   parseurl: [ '1.3.3' ],
+25 silly audit   'path-to-regexp': [ '0.1.13' ],
+25 silly audit   'proxy-addr': [ '2.0.7' ],
+25 silly audit   qs: [ '6.15.3' ],
+25 silly audit   'range-parser': [ '1.2.1' ],
+25 silly audit   'raw-body': [ '2.5.3' ],
+25 silly audit   'safe-buffer': [ '5.2.1' ],
+25 silly audit   'safer-buffer': [ '2.1.2' ],
+25 silly audit   send: [ '0.19.2' ],
+25 silly audit   'serve-static': [ '1.16.3' ],
+25 silly audit   setprototypeof: [ '1.2.0' ],
+25 silly audit   'side-channel': [ '1.1.1' ],
+25 silly audit   'side-channel-list': [ '1.0.1' ],
+25 silly audit   'side-channel-map': [ '1.0.1' ],
+25 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+25 silly audit   'socket.io-adapter': [ '2.5.8' ],
+25 silly audit   'socket.io-parser': [ '4.2.7' ],
+25 silly audit   statuses: [ '2.0.2' ],
+25 silly audit   toidentifier: [ '1.0.1' ],
+25 silly audit   'type-is': [ '1.6.18' ],
+25 silly audit   'undici-types': [ '8.3.0' ],
+25 silly audit   unpipe: [ '1.0.0' ],
+25 silly audit   'utils-merge': [ '1.0.1' ],
+25 silly audit   vary: [ '1.1.2' ],
+25 silly audit   ws: [ '8.21.2' ],
+25 silly audit   express: [ '4.22.2' ],
+25 silly audit   'socket.io': [ '4.8.3' ]
+25 silly audit }
+26 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 368ms
+27 silly audit report {}
+28 verbose cwd /data/data/com.termux/files/home
+29 verbose os Linux 4.19.191-perf-g753965064ab0
+30 verbose node v26.3.1
+31 verbose npm  v11.17.0
+32 verbose exit 0
+33 info ok
