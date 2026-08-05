@@ -2,35 +2,50 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sploop.io Survival Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sploop.io</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
 
-    <div id="ui-layer">
-        <div id="status-panel">
-            <div id="health-container">
-                <div id="health-bar"></div>
-                <span id="health-text">100 / 100</span>
-            </div>
-            <div id="resource-bar">
-                <span>🪵 <b id="res-wood">0</b></span>
-                <span>🪨 <b id="res-stone">0</b></span>
-                <span>🪙 <b id="res-gold">0</b></span>
-                <span>🍎 <b id="res-food">0</b></span>
+    <div id="ui-container">
+        <!-- Sol Alttaki Mini Harita (A1 - D4) -->
+        <div id="minimap-grid">
+            <div class="row"><span>A1</span><span>A2</span><span>A3</span><span>A4</span></div>
+            <div class="row"><span>B1</span><span>B2</span><span>B3</span><span>B4</span></div>
+            <div class="row"><span>C1</span><span>C2</span><span>C3</span><span>C4</span></div>
+            <div class="row"><span>D1</span><span>D2</span><span>D3</span><span>D4</span></div>
+            <div id="minimap-player"></div>
+        </div>
+
+        <!-- Alt Ortadaki Envanter ve Yaş Barı -->
+        <div id="bottom-hud">
+            <div id="age-label">AGE 0</div>
+            <div id="xp-bar-bg"><div id="xp-bar-fill"></div></div>
+            <div id="inventory-bar">
+                <div class="slot active" data-slot="0">🔨</div>
+                <div class="slot" data-slot="1">🍎</div>
+                <div class="slot" data-slot="2">🪵</div>
+                <div class="slot" data-slot="3">🕳️</div>
+                <div class="slot" data-slot="4">⚠️</div>
+                <div class="slot" data-slot="5">⚙️</div>
             </div>
         </div>
 
-        <div id="inventory-bar">
-            <div class="slot active" data-slot="0"><span class="key">1</span>🔨</div>
-            <div class="slot" data-slot="1"><span class="key">2</span>🪵</div>
-            <div class="slot" data-slot="2"><span class="key">3</span>⚠️</div>
-            <div class="slot" data-slot="3"><span class="key">4</span>🕳️</div>
-            <div class="slot" data-slot="4"><span class="key">5</span>⚙️</div>
-            <div class="slot" data-slot="5"><span class="key">6</span>🍎</div>
+        <!-- Sağ Alttaki Kaynak Göstergeleri -->
+        <div id="resource-panel">
+            <div class="res-item"><span class="icon">🍎</span><span id="res-food">100</span></div>
+            <div class="res-item"><span class="icon">🪵</span><span id="res-wood">100</span></div>
+            <div class="res-item"><span class="icon">🪨</span><span id="res-stone">100</span></div>
+            <div class="res-item"><span class="icon">🪙</span><span id="res-gold">0</span></div>
         </div>
+
+        <!-- Mobil Ekran Dokunmatik Joystick Alanı (Sol Taraf) -->
+        <div id="joystick-zone"></div>
+        
+        <!-- Mobil Vurma / Eylem Butonu (Sağ Taraf) -->
+        <div id="action-btn">⚔️</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

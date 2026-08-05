@@ -15,19 +15,26 @@ const players = {};
 const resources = [];
 const structures = [];
 
-// Haritaya kaynak türetme (Ağaç, Taş, Altın)
-for (let i = 0; i < 120; i++) {
+// Haritaya kaynak türetme (Meyve Çalısı, Ağaç, Taş, Altın)
+for (let i = 0; i < 140; i++) {
+    let type = 'tree';
+    let rand = Math.random();
+    if (rand < 0.3) type = 'bush';
+    else if (rand < 0.6) type = 'tree';
+    else if (rand < 0.85) type = 'stone';
+    else type = 'gold';
+
     resources.push({
         id: 'res_' + i,
         x: Math.random() * (MAP_SIZE - 400) + 200,
         y: Math.random() * (MAP_SIZE - 400) + 200,
-        type: Math.random() > 0.4 ? 'tree' : (Math.random() > 0.5 ? 'stone' : 'gold'),
-        radius: 35,
+        type: type,
+        radius: type === 'bush' ? 30 : 40,
         health: 100
     });
 }
 
-// Windmill (Değirmen) Altın Üretimi
+// Değirmen Altın Üretimi
 setInterval(() => {
     for (let id in players) {
         let p = players[id];
@@ -39,15 +46,18 @@ setInterval(() => {
 io.on('connection', (socket) => {
     players[socket.id] = {
         id: socket.id,
+        name: 'Sploop.io#' + Math.floor(100 + Math.random() * 900),
         x: Math.random() * (MAP_SIZE - 400) + 200,
         y: Math.random() * (MAP_SIZE - 400) + 200,
         radius: 35,
         angle: 0,
-        speed: 5,
+        speed: 5.5,
         health: 100,
         maxHealth: 100,
-        inputs: { up: false, down: false, left: false, right: false },
-        resources: { wood: 100, stone: 50, gold: 0, food: 5 },
+        age: 0,
+        xp: 0,
+        inputs: { up: false, down: false, left: false, right: false, moveAngle: null, isMoving: false },
+        resources: { wood: 100, stone: 100, gold: 0, food: 100 },
         selectedSlot: 0,
         autoAttack: false,
         isAttacking: false
@@ -66,9 +76,9 @@ io.on('connection', (socket) => {
 
     socket.on('quickHeal', () => {
         const p = players[socket.id];
-        if (p && p.resources.food > 0 && p.health < p.maxHealth) {
-            p.resources.food--;
-            p.health = Math.min(p.maxHealth, p.health + 25);
+        if (p && p.resources.food >= 10 && p.health < p.maxHealth) {
+            p.resources.food -= 10;
+            p.health = Math.min(p.maxHealth, p.health + 20);
         }
     });
 
@@ -78,14 +88,17 @@ io.on('connection', (socket) => {
 
         p.isAttacking = true;
 
-        if (p.selectedSlot === 0) {
+        if (p.selectedSlot === 0) { // Çekiç / Balta
             resources.forEach(res => {
                 let dist = Math.hypot(res.x - p.x, res.y - p.y);
-                if (dist < p.radius + res.radius + 35) {
+                if (dist < p.radius + res.radius + 30) {
                     res.health -= 25;
-                    if (res.type === 'tree') p.resources.wood += 20;
+                    if (res.type === 'tree') p.resources.wood += 15;
                     else if (res.type === 'stone') p.resources.stone += 15;
                     else if (res.type === 'gold') p.resources.gold += 10;
+                    else if (res.type === 'bush') p.resources.food += 15;
+
+                    p.xp += 10;
 
                     if (res.health <= 0) {
                         res.x = Math.random() * (MAP_SIZE - 400) + 200;
@@ -100,7 +113,7 @@ io.on('connection', (socket) => {
                     let target = players[id];
                     let dist = Math.hypot(target.x - p.x, target.y - p.y);
                     if (dist < p.radius + target.radius + 20) {
-                        target.health -= 20;
+                        target.health -= 25;
                         if (target.health <= 0) {
                             target.health = target.maxHealth;
                             target.x = Math.random() * (MAP_SIZE - 400) + 200;
@@ -109,15 +122,20 @@ io.on('connection', (socket) => {
                     }
                 }
             }
-        } else if (p.selectedSlot >= 1 && p.selectedSlot <= 4) {
+        } else if (p.selectedSlot === 1) { // Yemek yeme
+            if (p.resources.food >= 10 && p.health < p.maxHealth) {
+                p.resources.food -= 10;
+                p.health = Math.min(p.maxHealth, p.health + 20);
+            }
+        } else if (p.selectedSlot >= 2) { // Yapı kurma
             const costs = [
-                {},
-                { wood: 20 },
-                { wood: 15, stone: 10 },
-                { wood: 25, stone: 15 },
-                { wood: 50, stone: 30 }
+                {}, {},
+                { wood: 20 },           // Duvar
+                { wood: 25, stone: 15 }, // Tuzak
+                { wood: 15, stone: 20 }, // Diken
+                { wood: 50, stone: 30 }  // Değirmen
             ];
-            const types = ['', 'wall', 'spike', 'trap', 'windmill'];
+            const types = ['', '', 'wall', 'trap', 'spike', 'windmill'];
             const cost = costs[p.selectedSlot];
             const type = types[p.selectedSlot];
 
@@ -129,10 +147,10 @@ io.on('connection', (socket) => {
             if (canAfford) {
                 for (let res in cost) p.resources[res] -= cost[res];
 
-                const placeX = p.x + Math.cos(p.angle) * 70;
-                const placeY = p.y + Math.sin(p.angle) * 70;
+                const placeX = p.x + Math.cos(p.angle) * 75;
+                const placeY = p.y + Math.sin(p.angle) * 75;
 
-                const newStruct = {
+                structures.push({
                     id: 'st_' + Math.random().toString(36).substr(2, 9),
                     ownerId: socket.id,
                     x: placeX,
@@ -140,8 +158,7 @@ io.on('connection', (socket) => {
                     type: type,
                     radius: 30,
                     health: 150
-                };
-                structures.push(newStruct);
+                });
             }
         }
     });
@@ -151,19 +168,27 @@ io.on('connection', (socket) => {
     });
 });
 
+// Hareket ve Oyun Döngüsü
 setInterval(() => {
     for (let id in players) {
         const p = players[id];
         let moveX = 0, moveY = 0;
 
-        if (p.inputs.up) moveY -= 1;
-        if (p.inputs.down) moveY += 1;
-        if (p.inputs.left) moveX -= 1;
-        if (p.inputs.right) moveX += 1;
+        if (p.inputs.isMoving && p.inputs.moveAngle !== null) {
+            // Dokunmatik Joystick Hareketi
+            moveX = Math.cos(p.inputs.moveAngle);
+            moveY = Math.sin(p.inputs.moveAngle);
+        } else {
+            // WASD / Yön Tuşları
+            if (p.inputs.up) moveY -= 1;
+            if (p.inputs.down) moveY += 1;
+            if (p.inputs.left) moveX -= 1;
+            if (p.inputs.right) moveX += 1;
 
-        if (moveX !== 0 && moveY !== 0) {
-            moveX *= Math.SQRT1_2;
-            moveY *= Math.SQRT1_2;
+            if (moveX !== 0 && moveY !== 0) {
+                moveX *= Math.SQRT1_2;
+                moveY *= Math.SQRT1_2;
+            }
         }
 
         p.x = Math.max(p.radius, Math.min(MAP_SIZE - p.radius, p.x + moveX * p.speed));
@@ -173,4 +198,4 @@ setInterval(() => {
     io.emit('gameState', { players, resources, structures });
 }, 1000 / 60);
 
-server.listen(PORT, () => console.log(`Sunucu aktif: http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Sploop Sunucu Aktif: http://localhost:${PORT}`));
