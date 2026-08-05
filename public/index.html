@@ -20,6 +20,21 @@
             display: block;
             width: 100vw;
             height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Arayüz Elemanları (Canvas'ın üstünde durması için z-index: 10) */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
         }
 
         /* Sağ Üst Skor Tablosu */
@@ -34,12 +49,6 @@
             font-size: 14px;
             min-width: 160px;
             text-align: left;
-            pointer-events: none;
-        }
-
-        #leaderboard ol {
-            margin: 5px 0 0 20px;
-            padding: 0;
         }
 
         /* Alt Yaş ve İtem Barı */
@@ -52,7 +61,6 @@
             flex-direction: column;
             align-items: center;
             gap: 8px;
-            pointer-events: none;
         }
 
         #age-text {
@@ -60,7 +68,6 @@
             font-weight: bold;
             font-size: 14px;
             text-shadow: 1px 1px 2px black;
-            letter-spacing: 1px;
         }
 
         #health-bar-container {
@@ -76,7 +83,6 @@
             width: 100%;
             height: 100%;
             background-color: #55a630;
-            transition: width 0.2s;
         }
 
         #item-bar {
@@ -96,7 +102,6 @@
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 12px;
             cursor: pointer;
         }
 
@@ -104,7 +109,7 @@
             border-color: #ffd166;
         }
 
-        /* Sol Alt Mini Harita Grid Sistemi */
+        /* Sol Alt Mini Harita Grid */
         #minimap {
             position: absolute;
             bottom: 15px;
@@ -117,7 +122,6 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: repeat(4, 1fr);
-            pointer-events: none;
         }
 
         .grid-cell {
@@ -132,40 +136,42 @@
 </head>
 <body>
 
+    <!-- Oyun Çizim Ekranı -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Sağ Üst Skor Tablosu -->
-    <div id="leaderboard">
-        <b>Skor Tablosu</b>
-        <ol>
-            <li>Sploop.io #961 - 99.9K</li>
-            <li>Oyuncu 2 - 45K</li>
-            <li>Oyuncu 3 - 12K</li>
-        </ol>
-    </div>
-
-    <!-- Sol Alt Mini Harita Grid -->
-    <div id="minimap">
-        <div class="grid-cell">A1</div><div class="grid-cell">A2</div><div class="grid-cell">A3</div><div class="grid-cell">A4</div>
-        <div class="grid-cell">B1</div><div class="grid-cell">B2</div><div class="grid-cell">B3</div><div class="grid-cell">B4</div>
-        <div class="grid-cell">C1</div><div class="grid-cell">C2</div><div class="grid-cell">C3</div><div class="grid-cell">C4</div>
-        <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
-    </div>
-
-    <!-- Alt Kısım: Yaş, Can ve İtem Slotları -->
-    <div id="ui-bottom">
-        <div id="age-text">AGE 0</div>
-        <div id="health-bar-container">
-            <div id="health-bar"></div>
+    <!-- Sploop.io Tarzı Arayüz -->
+    <div id="ui-layer">
+        <div id="leaderboard">
+            <b>Skor Tablosu</b>
+            <div id="leaderboard-list"></div>
         </div>
-        <div id="item-bar">
-            <div class="item-slot active">🔨</div>
-            <div class="item-slot">🍎</div>
-            <div class="item-slot">🍯</div>
-            <div class="item-slot">🛡️</div>
-            <div class="item-slot">🪵</div>
+
+        <div id="minimap">
+            <div class="grid-cell">A1</div><div class="grid-cell">A2</div><div class="grid-cell">A3</div><div class="grid-cell">A4</div>
+            <div class="grid-cell">B1</div><div class="grid-cell">B2</div><div class="grid-cell">B3</div><div class="grid-cell">B4</div>
+            <div class="grid-cell">C1</div><div class="grid-cell">C2</div><div class="grid-cell">C3</div><div class="grid-cell">C4</div>
+            <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
+        </div>
+
+        <div id="ui-bottom">
+            <div id="age-text">AGE 0</div>
+            <div id="health-bar-container">
+                <div id="health-bar"></div>
+            </div>
+            <div id="item-bar">
+                <div class="item-slot active">🔨</div>
+                <div class="item-slot">🍎</div>
+                <div class="item-slot">🍯</div>
+                <div class="item-slot">🛡️</div>
+                <div class="item-slot">🪵</div>
+            </div>
         </div>
     </div>
 
+    <!-- Oyun Mantığını Yükleyen Scriptler -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+    <script src="client.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
