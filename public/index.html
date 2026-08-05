@@ -2,174 +2,105 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GTRSP IO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sploop.io Clone - GTRSP</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #5c9432; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        #gameCanvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* GİRİŞ EKRANI */
+        #menu-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #8cc34a;
-            font-family: Arial, sans-serif;
+        .menu-box {
+            background: #2a3a1e; border: 4px solid #4a6b32; padding: 30px; border-radius: 12px;
+            text-align: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px;
         }
-
-        #gameCanvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
+        .menu-box h1 { margin: 0 0 20px 0; font-size: 28px; color: #a4de02; text-shadow: 2px 2px 0 #000; }
+        .menu-box input {
+            width: 100%; padding: 12px; border-radius: 6px; border: none; font-size: 16px;
+            margin-bottom: 15px; text-align: center; font-weight: bold; outline: none;
         }
-
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
+        .menu-box button {
+            width: 100%; padding: 12px; border-radius: 6px; border: none; background: #8bc34a;
+            color: white; font-weight: bold; font-size: 18px; cursor: pointer; text-shadow: 1px 1px 0 #000;
+            transition: 0.2s;
         }
+        .menu-box button:hover { background: #7cb342; }
 
-        /* Sağ Üst Skor Tablosu */
+        /* ARAYÜZ KATMANI */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
+
+        /* Sağ Üst Skor */
         #leaderboard {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(0, 0, 0, 0.4);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 14px;
-            min-width: 160px;
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.4); color: white;
+            padding: 12px; border-radius: 8px; font-size: 13px; width: 170px; border: 2px solid rgba(255,255,255,0.1);
         }
+        #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; }
+        .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
 
-        /* Alt Yaş ve İtem Barı */
+        /* Alt Yaş & Envanter */
         #ui-bottom {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
-
-        #age-text {
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-            text-shadow: 1px 1px 2px black;
+        #age-text { color: white; font-weight: bold; font-size: 14px; text-shadow: 2px 2px 2px black; }
+        #health-container {
+            width: 220px; height: 16px; background: rgba(0,0,0,0.6); border-radius: 8px;
+            overflow: hidden; border: 2px solid rgba(0,0,0,0.3); position: relative;
         }
-
-        #health-bar-container {
-            width: 220px;
-            height: 14px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 4px;
-            overflow: hidden;
-            border: 2px solid rgba(0, 0, 0, 0.2);
+        #health-bar { width: 100%; height: 100%; background: #4caf50; transition: width 0.1s; }
+        
+        #item-bar { display: flex; gap: 8px; pointer-events: auto; }
+        .slot {
+            width: 50px; height: 50px; background: rgba(0,0,0,0.5); border: 3px solid rgba(255,255,255,0.2);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer;
         }
+        .slot.active { border-color: #ffca28; background: rgba(255,255,255,0.2); }
 
-        #health-bar {
-            width: 100%;
-            height: 100%;
-            background-color: #55a630;
-        }
-
-        #item-bar {
-            display: flex;
-            gap: 6px;
-            pointer-events: auto;
-        }
-
-        .item-slot {
-            width: 48px;
-            height: 48px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 3px solid rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .item-slot.active {
-            border-color: #ffd166;
-        }
-
-        /* Sol Alt Mini Harita Grid */
+        /* Sol Alt Grid Harita */
         #minimap {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            width: 110px;
-            height: 110px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 3px solid rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(4, 1fr);
+            position: absolute; bottom: 15px; left: 15px; width: 100px; height: 100px;
+            background: rgba(0,0,0,0.4); border: 2px solid rgba(0,0,0,0.5); border-radius: 6px;
+            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
         }
+        .grid-cell { border: 1px solid rgba(255,255,255,0.05); font-size: 8px; color: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; }
 
-        .grid-cell {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Mobil Joystick Alanı */
+        /* Joystick */
         #joystick-zone {
-            position: absolute;
-            bottom: 30px;
-            left: 30px;
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            pointer-events: auto;
-            touch-action: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px;
+            border-radius: 50%; pointer-events: auto; touch-action: none;
         }
-
         #joystick-knob {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            position: absolute;
+            width: 45px; height: 45px; background: rgba(255,255,255,0.4); border-radius: 50%;
+            position: absolute; top: 37.5px; left: 37.5px; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
+    <!-- GİRİŞ EKRANI -->
+    <div id="menu-overlay">
+        <div class="menu-box">
+            <h1>SPLOOP.IO</h1>
+            <input type="text" id="nickname" placeholder="Oyuncu Adı" value="Oyuncu#123" maxlength="12">
+            <button onclick="startGame()">OYNA</button>
+        </div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
+    <!-- OYUN ARAYÜZÜ -->
     <div id="ui-layer">
         <div id="leaderboard">
-            <b>Skor Tablosu</b>
-            <div id="leaderboard-list"></div>
+            <h3>Sıralama</h3>
+            <div class="lb-row"><span id="lb-name">1. Sen</span><span id="lb-score">0</span></div>
+            <div class="lb-row"><span>2. Bot Alpha</span><span>1.2K</span></div>
+            <div class="lb-row"><span>3. Bot Beta</span><span>450</span></div>
         </div>
 
         <div id="minimap">
@@ -179,105 +110,232 @@
             <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
         </div>
 
-        <!-- Mobil Dokunmatik Joystick -->
         <div id="joystick-zone">
             <div id="joystick-knob"></div>
         </div>
 
         <div id="ui-bottom">
-            <div id="age-text">AGE 0</div>
-            <div id="health-bar-container">
-                <div id="health-bar"></div>
-            </div>
+            <div id="age-text">AGE 1</div>
+            <div id="health-container"><div id="health-bar"></div></div>
             <div id="item-bar">
-                <div class="item-slot active">🔨</div>
-                <div class="item-slot">🍎</div>
-                <div class="item-slot">🍯</div>
-                <div class="item-slot">🛡️</div>
-                <div class="item-slot">🪵</div>
+                <div class="slot active" onclick="selectSlot(0)">🔨</div>
+                <div class="slot" onclick="selectSlot(1)">🍎</div>
+                <div class="slot" onclick="selectSlot(2)">🍯</div>
+                <div class="slot" onclick="selectSlot(3)">🛡️</div>
+                <div class="slot" onclick="selectSlot(4)">🪵</div>
             </div>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        // PC Kontrolleri (WASD + Mouse)
-        const keys = { w: false, a: false, s: false, d: false };
-        window.addEventListener('keydown', (e) => {
-            if (['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
-                keys[e.key.toLowerCase()] = true;
-                sendMovement();
-            }
-        });
-        window.addEventListener('keyup', (e) => {
-            if (['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
-                keys[e.key.toLowerCase()] = false;
-                sendMovement();
-            }
-        });
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-        // Mobil Joystick Kontrolleri
-        const zone = document.getElementById('joystick-zone');
-        const knob = document.getElementById('joystick-knob');
-        let activeTouch = null;
-
-        zone.addEventListener('touchstart', (e) => {
-            activeTouch = e.touches[0];
-            moveKnob(activeTouch);
-        });
-
-        zone.addEventListener('touchmove', (e) => {
-            if (!activeTouch) return;
-            for (let touch of e.touches) {
-                if (touch.identifier === activeTouch.identifier) {
-                    moveKnob(touch);
-                    break;
-                }
-            }
-        });
-
-        const resetKnob = () => {
-            knob.style.transform = `translate(0px, 0px)`;
-            activeTouch = null;
-            if (window.socket) window.socket.emit('move', { x: 0, y: 0 });
+        // Oyun Durumu
+        let gameStarted = false;
+        let score = 0;
+        let health = 100;
+        
+        const player = {
+            x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Oyuncu",
+            attacking: false, attackAnim: 0
         };
 
-        zone.addEventListener('touchend', resetKnob);
-        zone.addEventListener('touchcancel', resetKnob);
-
-        function moveKnob(touch) {
-            const rect = zone.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            const dist = Math.hypot(dx, dy);
-            const maxRadius = rect.width / 2 - 25;
-
-            if (dist > maxRadius) {
-                dx = (dx / dist) * maxRadius;
-                dy = (dy / dist) * maxRadius;
-            }
-
-            knob.style.transform = `translate(${dx}px, ${dy}px)`;
-            if (window.socket) {
-                window.socket.emit('move', { x: dx / maxRadius, y: dy / maxRadius });
-            }
+        // Harita Nesneleri (Ağaçlar, Taşlar, İnekler)
+        const mapSize = 4000;
+        const resources = [];
+        for(let i = 0; i < 120; i++) {
+            resources.push({
+                x: Math.random() * (mapSize - 200) + 100,
+                y: Math.random() * (mapSize - 200) + 100,
+                type: Math.random() > 0.5 ? 'tree' : 'stone',
+                radius: Math.random() > 0.5 ? 40 : 30
+            });
         }
 
-        function sendMovement() {
-            let x = 0, y = 0;
-            if (keys.a) x -= 1;
-            if (keys.d) x += 1;
-            if (keys.w) y -= 1;
-            if (keys.s) y += 1;
-            if (window.socket) {
-                window.socket.emit('move', { x, y });
+        // Oyunu Başlat
+        function startGame() {
+            const nick = document.getElementById('nickname').value.trim();
+            if(nick) player.name = nick;
+            document.getElementById('lb-name').innerText = "1. " + player.name;
+            document.getElementById('menu-overlay').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+            gameStarted = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Kontroller (WASD & Mouse)
+        const keys = {};
+        let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
+
+        window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('mousemove', e => {
+            mouseX = e.clientX; mouseY = e.clientY;
+        });
+        window.addEventListener('mousedown', () => doAttack());
+
+        // Mobil Joystick Mantığı
+        const jZone = document.getElementById('joystick-zone');
+        const jKnob = document.getElementById('joystick-knob');
+        let moveX = 0, moveY = 0;
+
+        jZone.addEventListener('touchstart', handleTouch);
+        jZone.addEventListener('touchmove', handleTouch);
+        jZone.addEventListener('touchend', () => {
+            moveX = 0; moveY = 0;
+            jKnob.style.transform = `translate(0px, 0px)`;
+        });
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = jZone.getBoundingClientRect();
+            const cx = rect.left + rect.width/2;
+            const cy = rect.top + rect.height/2;
+            let dx = touch.clientX - cx;
+            let dy = touch.clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            const maxR = 35;
+            if(dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
+            jKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            moveX = dx / maxR; moveY = dy / maxR;
+        }
+
+        // Saldırı Fonksiyonu
+        function doAttack() {
+            if(!gameStarted || player.attacking) return;
+            player.attacking = true;
+            player.attackAnim = 0;
+
+            // Yakındaki kaynaklara vurma
+            resources.forEach((res, idx) => {
+                const dist = Math.hypot(res.x - player.x, res.y - player.y);
+                if(dist < player.radius + res.radius + 30) {
+                    score += 50;
+                    document.getElementById('lb-score').innerText = score;
+                }
+            });
+        }
+
+        function selectSlot(idx) {
+            const slots = document.querySelectorAll('.slot');
+            slots.forEach((s, i) => s.classList.toggle('active', i === idx));
+        }
+
+        // Ana Oyun Döngüsü
+        function gameLoop() {
+            if(!gameStarted) return;
+
+            // Hareket Hesaplama
+            let dx = 0, dy = 0;
+            if(keys['w'] || keys['arrowup']) dy -= 1;
+            if(keys['s'] || keys['arrowdown']) dy += 1;
+            if(keys['a'] || keys['arrowleft']) dx -= 1;
+            if(keys['d'] || keys['arrowright']) dx += 1;
+
+            if(moveX !== 0 || moveY !== 0) { dx = moveX; dy = moveY; }
+
+            if(dx !== 0 || dy !== 0) {
+                const len = Math.hypot(dx, dy);
+                player.x += (dx / len) * player.speed;
+                player.y += (dy / len) * player.speed;
             }
+
+            // Açı Hesaplama
+            player.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
+
+            // Çizim İşlemleri (Kamera Oyuncuyu Takip Eder)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
+
+            // Arka Plan Grid (Çim Dokusu)
+            ctx.strokeStyle = '#52852c';
+            ctx.lineWidth = 4;
+            const gridSize = 80;
+            const startX = Math.floor((player.x - canvas.width) / gridSize) * gridSize;
+            const endX = Math.floor((player.x + canvas.width) / gridSize) * gridSize;
+            const startY = Math.floor((player.y - canvas.height) / gridSize) * gridSize;
+            const endY = Math.floor((player.y + canvas.height) / gridSize) * gridSize;
+
+            for(let x = startX; x < endX; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+            }
+            for(let y = startY; y < endY; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+            }
+
+            // Kaynakları Çiz
+            resources.forEach(res => {
+                ctx.beginPath();
+                ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
+                if(res.type === 'tree') {
+                    ctx.fillStyle = '#2e7d32'; ctx.fill();
+                    ctx.lineWidth = 6; ctx.strokeStyle = '#1b5e20'; ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#757575'; ctx.fill();
+                    ctx.lineWidth = 6; ctx.strokeStyle = '#424242'; ctx.stroke();
+                }
+            });
+
+            // Oyuncuyu Çiz
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+
+            // El ve Silah
+            let weaponAngle = 0;
+            if(player.attacking) {
+                player.attackAnim += 0.2;
+                weaponAngle = Math.sin(player.attackAnim) * 0.8;
+                if(player.attackAnim >= Math.PI) { player.attacking = false; }
+            }
+
+            // Çekiç / Silah
+            ctx.save();
+            ctx.translate(20, 15);
+            ctx.rotate(weaponAngle);
+            ctx.fillStyle = '#795548'; ctx.fillRect(0, -4, 30, 8);
+            ctx.fillStyle = '#607d8b'; ctx.fillRect(20, -12, 15, 24);
+            ctx.restore();
+
+            // Eller
+            ctx.fillStyle = '#e0ac69';
+            ctx.beginPath(); ctx.arc(20, 15, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(20, -15, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+            // Gövde (Karakter Dairesi)
+            ctx.beginPath();
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#e0ac69'; ctx.fill();
+            ctx.lineWidth = 4; ctx.strokeStyle = '#263238'; ctx.stroke();
+
+            // Gözler
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(10, -7, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10, 7, 4, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
+
+            // İsim Etiketi
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
+            ctx.fillText(player.name, player.x, player.y - 35);
+
+            ctx.restore();
+
+            requestAnimationFrame(gameLoop);
         }
     </script>
-    <script src="game.js"></script>
-    <script src="client.js"></script>
-    <script src="app.js"></script>
 </body>
 </html>
