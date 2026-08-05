@@ -55,9 +55,8 @@ socket.on('gameState', (state) => {
     }
 });
 
-// Zemin ve Harita Sınırı (Grid & Harita Dışı Beyazlık)
 function drawGrid(scale, me) {
-    ctx.fillStyle = '#7ca942'; // Sploop çim rengi
+    ctx.fillStyle = '#7ca942';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const gridSize = 65 * scale;
@@ -75,116 +74,143 @@ function drawGrid(scale, me) {
     }
 }
 
-// Orijinal Sploop Çekiç ve El Çizimi
-function drawWeapon(isAttacking) {
+// Görseldeki Birebir Silah Yapıları ve Çapraz Açı Sistemi
+function drawWeapon(type, isAttacking) {
     ctx.save();
-    let swing = isAttacking ? Math.sin(performance.now() * 0.05) * 0.8 : 0;
-    ctx.rotate(swing);
+
+    // Sploop.io'da silahlar varsayılan olarak hafif çapraz durur (~35 derece)
+    let baseAngle = Math.PI / 5;
+    let swing = isAttacking ? Math.sin(performance.now() * 0.06) * 1.1 : 0;
+    ctx.rotate(baseAngle + swing);
 
     ctx.lineWidth = 4;
-    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeStyle = '#1d1d1d';
+    ctx.lineJoin = 'round';
 
-    // Çekiç Sapı (Ahşap)
-    ctx.fillStyle = '#5c3a21';
-    ctx.fillRect(10, -5, 38, 10);
-    ctx.strokeRect(10, -5, 38, 10);
+    if (type === 'sword') {
+        // Çift Kenarlı Kılıç
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(10, -5);
+        ctx.lineTo(52, -6);
+        ctx.lineTo(66, 0);
+        ctx.lineTo(52, 6);
+        ctx.lineTo(10, 5);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
 
-    // Çekiç Kafası (Koyu Metal)
-    ctx.fillStyle = '#4a4e69';
-    ctx.beginPath();
-    ctx.roundRect(40, -18, 22, 36, 4);
-    ctx.fill();
-    ctx.stroke();
+        // Kılıç Kabzası ve Koruması
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(8, -11, 6, 22); ctx.strokeRect(8, -11, 6, 22);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-8, -4, 16, 8); ctx.strokeRect(-8, -4, 16, 8);
 
-    // Çekiç Metal Detayı (Açık Çelik Şerit)
-    ctx.fillStyle = '#9a8c98';
-    ctx.fillRect(45, -18, 12, 36);
-    ctx.strokeRect(45, -18, 12, 36);
+    } else if (type === 'spear') {
+        // Uzun Mızrak
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-15, -4, 80, 8); ctx.strokeRect(-15, -4, 80, 8);
 
-    // Sol ve Sağ Eller (Gövdenin önünde tutan yumruklar)
+        // Mızrak Ucu
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(65, -11); ctx.lineTo(92, 0); ctx.lineTo(65, 11);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    } else {
+        // Balyoz / Çekiç (Görseldeki "Choose Item" 2. Silah)
+        ctx.fillStyle = '#5c3a21';
+        ctx.fillRect(-5, -5, 48, 10);
+        ctx.strokeRect(-5, -5, 48, 10);
+
+        // Koyu Balyoz Kafası
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(38, -18, 24, 36, 4);
+        ctx.fill(); ctx.stroke();
+
+        // Balyoz Metal Şeridi
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(44, -18, 12, 36);
+        ctx.strokeRect(44, -18, 12, 36);
+    }
+
+    // Eller (Silahı Tam Kavrayan Çift Yumruk)
     ctx.fillStyle = '#e6b88a';
-    ctx.beginPath(); ctx.arc(16, 15, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(28, 6, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(12, 12, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26, 4, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
     ctx.restore();
 }
 
-// Orijinal Karakter
 function drawPlayer(p) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
     // Gölge
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.beginPath(); ctx.arc(3, 5, 35, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3, 5, 33, 0, Math.PI * 2); ctx.fill();
 
     // İsim
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px Arial';
+    ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3.5;
-    ctx.strokeText(p.name, 0, -52);
-    ctx.fillText(p.name, 0, -52);
+    ctx.strokeText(p.name, 0, -50);
+    ctx.fillText(p.name, 0, -50);
 
     // Can Barı
-    const barW = 54;
+    const barW = 50;
     ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.roundRect(-barW / 2, -42, barW, 8, 4); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-barW / 2, -40, barW, 7, 3); ctx.fill();
     const hpRatio = Math.max(0, p.health / p.maxHealth);
-    ctx.fillStyle = hpRatio > 0.5 ? '#57cc99' : hpRatio > 0.25 ? '#ffb703' : '#ff4d6d';
-    ctx.beginPath(); ctx.roundRect(-barW / 2, -42, barW * hpRatio, 8, 4); ctx.fill();
+    ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : hpRatio > 0.25 ? '#eab308' : '#ef4444';
+    ctx.beginPath(); ctx.roundRect(-barW / 2, -40, barW * hpRatio, 7, 3); ctx.fill();
 
     ctx.rotate(p.angle);
 
-    // Silah
-    drawWeapon(p.isAttacking);
+    // Seçilen slot'a göre silahı çiz
+    const weaponType = (p.selectedSlot === 1) ? 'sword' : ((p.selectedSlot === 3) ? 'spear' : 'hammer');
+    drawWeapon(weaponType, p.isAttacking);
 
-    // Gövde (Sploop Ten Tonu + Siyah Kalın Kontür)
+    // Karakter Gövdesi
     ctx.fillStyle = '#e6b88a';
-    ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 31, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4.5;
-    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeStyle = '#1d1d1d';
     ctx.stroke();
 
     ctx.restore();
 }
 
-// Orijinal Sploop Kayalar, Çalılar ve Meyveler
 function drawResources(resources) {
     resources.forEach(res => {
         ctx.save();
         ctx.translate(res.x, res.y);
         ctx.lineWidth = 4.5;
-        ctx.strokeStyle = '#1a1a1a';
+        ctx.strokeStyle = '#1d1d1d';
 
         if (res.type === 'tree') {
-            // Meyveli Çalı / Ağaç
             ctx.fillStyle = '#52b788';
             ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#74c69d';
             ctx.beginPath(); ctx.arc(-12, -12, 28, 0, Math.PI * 2); ctx.fill();
 
-            // Kırmızı Böğürtlenler / Meyveler
             ctx.fillStyle = '#d90429';
             [[-18, 10], [12, -18], [15, 15], [-8, -22]].forEach(pt => {
                 ctx.beginPath(); ctx.arc(pt[0], pt[1], 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             });
         } else if (res.type === 'stone') {
-            // Köşeli Kaya (Polygon Kaya Çizimi)
             ctx.fillStyle = '#6c757d';
             ctx.beginPath();
             ctx.moveTo(-35, -20); ctx.lineTo(-10, -42); ctx.lineTo(30, -30);
             ctx.lineTo(42, 10); ctx.lineTo(20, 38); ctx.lineTo(-25, 35); ctx.lineTo(-40, 5);
             ctx.closePath(); ctx.fill(); ctx.stroke();
-
-            // Kaya Açık Yüzeyi
             ctx.fillStyle = '#adb5bd';
             ctx.beginPath();
             ctx.moveTo(-20, -15); ctx.lineTo(-5, -30); ctx.lineTo(20, -20); ctx.lineTo(10, 5); ctx.lineTo(-15, 10);
             ctx.closePath(); ctx.fill();
         } else if (res.type === 'gold') {
-            // Altın Madeni
             ctx.fillStyle = '#ffb703';
             ctx.beginPath();
             ctx.moveTo(-28, -15); ctx.lineTo(0, -35); ctx.lineTo(32, -18);
