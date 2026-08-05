@@ -43,21 +43,23 @@ socket.on('gameState', (state) => {
         document.getElementById('xp-bar-fill').style.width = me.xp + '%';
 
         const minimapPlayer = document.getElementById('minimap-player');
-        minimapPlayer.style.left = (me.x / MAP_SIZE * 100) + '%';
-        minimapPlayer.style.top = (me.y / MAP_SIZE * 100) + '%';
+        if (minimapPlayer) {
+            minimapPlayer.style.left = (me.x / MAP_SIZE * 100) + '%';
+            minimapPlayer.style.top = (me.y / MAP_SIZE * 100) + '%';
+        }
     }
 });
 
-function drawGrid() {
+function drawGrid(scale) {
     const me = gameState.players[myId];
     if (!me) return;
 
-    const gridSize = 50;
-    const offsetX = (canvas.width / 2 - me.x) % gridSize;
-    const offsetY = (canvas.height / 2 - me.y) % gridSize;
+    const gridSize = 60 * scale;
+    const offsetX = (canvas.width / 2 - me.x * scale) % gridSize;
+    const offsetY = (canvas.height / 2 - me.y * scale) % gridSize;
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.lineWidth = 2;
 
     for (let x = offsetX; x < canvas.width; x += gridSize) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
@@ -73,45 +75,99 @@ function drawPlayer(p, isMe) {
 
     // İsim
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 13px sans-serif';
+    ctx.font = '900 14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#000'; ctx.shadowBlur = 3;
-    ctx.fillText(p.name, 0, -p.radius - 20);
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;
+    ctx.fillText(p.name, 0, -p.radius - 22);
     ctx.shadowBlur = 0;
 
     // Can Barı
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(-22, -p.radius - 12, 44, 6);
-    ctx.fillStyle = '#4caf50';
-    ctx.fillRect(-22, -p.radius - 12, (p.health / p.maxHealth) * 44, 6);
+    ctx.fillRect(-24, -p.radius - 14, 48, 7);
+    ctx.fillStyle = '#66bb6a';
+    ctx.fillRect(-24, -p.radius - 14, (p.health / p.maxHealth) * 48, 7);
 
+    // Karakter Yönü Dönüşü
     ctx.rotate(p.angle);
 
-    // Çekiç / Eller
-    let attackOffset = p.isAttacking ? 12 : 0;
+    let attackOffset = p.isAttacking ? 14 : 0;
 
-    ctx.fillStyle = '#e5c158';
-    ctx.strokeStyle = '#2b2b2b';
-    ctx.lineWidth = 3.5;
+    // Eller ve Silah (Çekiç)
+    ctx.fillStyle = '#e0a96d';
+    ctx.strokeStyle = '#2d2d2d';
+    ctx.lineWidth = 4;
 
-    // Sol ve Sağ el
-    ctx.beginPath(); ctx.arc(22 + attackOffset, 16, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(22 + attackOffset, -16, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Sol El
+    ctx.beginPath(); 
+    ctx.arc(22, -18, 9, 0, Math.PI * 2); 
+    ctx.fill(); ctx.stroke();
 
-    // Çekiç Sapı ve Başı (Ataktaysa)
-    if (p.selectedSlot === 0) {
-        ctx.fillStyle = '#795548';
-        ctx.fillRect(15 + attackOffset, 10, 25, 5);
+    // Sağ El ve Çekiç
+    ctx.save();
+    ctx.translate(22 + attackOffset, 18);
+    
+    // Çekiç (Sadece çekiç slotu seçiliyken veya boşken)
+    if (p.selectedSlot === 0 || p.selectedSlot === undefined) {
+        // Çekiç Sapı
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(0, -3, 26, 6);
+        ctx.strokeRect(0, -3, 26, 6);
+
+        // Çekiç Başı
         ctx.fillStyle = '#424242';
-        ctx.fillRect(35 + attackOffset, 2, 12, 20);
+        ctx.fillRect(22, -14, 14, 28);
+        ctx.strokeRect(22, -14, 14, 28);
     }
+    
+    // Sağ El Dağiresi
+    ctx.fillStyle = '#e0a96d';
+    ctx.beginPath(); 
+    ctx.arc(0, 0, 9, 0, Math.PI * 2); 
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
 
-    // Karakter Gövdesi
-    ctx.fillStyle = '#e5c158'; // Sploop ten rengi
-    ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 4; ctx.strokeStyle = '#2b2b2b'; ctx.stroke();
+    // Karakter Ana Gövdesi (Sploop Ten Rengi)
+    ctx.fillStyle = '#e0a96d';
+    ctx.beginPath(); 
+    ctx.arc(0, 0, p.radius, 0, Math.PI * 2); 
+    ctx.fill();
+    ctx.lineWidth = 4.5; 
+    ctx.strokeStyle = '#2d2d2d'; 
+    ctx.stroke();
 
     ctx.restore();
+}
+
+function drawStructures(structures) {
+    structures.forEach(st => {
+        ctx.save();
+        ctx.translate(st.x, st.y);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#2d2d2d';
+
+        if (st.type === 'wall') {
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
+            ctx.strokeRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
+        } else if (st.type === 'spike') {
+            ctx.fillStyle = '#b0bec5';
+            ctx.beginPath();
+            ctx.arc(0, 0, st.radius, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        } else if (st.type === 'trap') {
+            ctx.fillStyle = '#37474f';
+            ctx.beginPath();
+            ctx.arc(0, 0, st.radius, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        } else if (st.type === 'windmill') {
+            ctx.fillStyle = '#ffb74d';
+            ctx.beginPath();
+            ctx.arc(0, 0, st.radius, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        }
+
+        ctx.restore();
+    });
 }
 
 function drawResources(resources) {
@@ -119,25 +175,31 @@ function drawResources(resources) {
         ctx.save();
         ctx.translate(res.x, res.y);
         ctx.lineWidth = 4.5;
-        ctx.strokeStyle = '#2b2b2b';
+        ctx.strokeStyle = '#2d2d2d';
 
         if (res.type === 'bush') {
             ctx.fillStyle = '#2e7d32';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#d32f2f';
-            ctx.beginPath(); ctx.arc(-8, -8, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(8, 6, 6, 0, Math.PI * 2); ctx.fill();
+            // Meyveler
+            ctx.fillStyle = '#e53935';
+            ctx.beginPath(); ctx.arc(-10, -8, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(8, 8, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10, -6, 6, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'tree') {
-            ctx.fillStyle = '#388e3c';
+            ctx.fillStyle = '#43a047';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#1b5e20';
-            ctx.beginPath(); ctx.arc(0, 0, res.radius * 0.6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, res.radius * 0.65, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'stone') {
             ctx.fillStyle = '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#546e7a';
+            ctx.beginPath(); ctx.arc(-5, -5, res.radius * 0.5, 0, Math.PI * 2); ctx.fill();
         } else if (res.type === 'gold') {
             ctx.fillStyle = '#fbc02d';
             ctx.beginPath(); ctx.arc(0, 0, res.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f57f17';
+            ctx.beginPath(); ctx.arc(-4, -4, res.radius * 0.55, 0, Math.PI * 2); ctx.fill();
         }
 
         ctx.restore();
@@ -145,18 +207,30 @@ function drawResources(resources) {
 }
 
 function renderLoop() {
-    ctx.fillStyle = '#85ac44'; // Orijinal çim rengi
+    // Çim Rengi
+    ctx.fillStyle = '#7cb342';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const me = gameState.players[myId];
     if (me) {
-        drawGrid();
+        // Kamera ölçeği (Zoom out) - Ekranı biraz daha geniş görmeyi sağlar
+        const scale = 0.85;
+
+        drawGrid(scale);
 
         ctx.save();
-        ctx.translate(canvas.width / 2 - me.x, canvas.height / 2 - me.y);
+        // Kamerayı oyuncuya ortala ve scale uygula
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-me.x, -me.y);
 
+        // Yapıları Çiz
+        if (gameState.structures) drawStructures(gameState.structures);
+
+        // Kaynakları Çiz
         drawResources(gameState.resources);
 
+        // Oyuncuları Çiz
         for (let id in gameState.players) {
             drawPlayer(gameState.players[id], id === myId);
         }
