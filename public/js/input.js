@@ -4,7 +4,6 @@ class InputHandler {
         this.inputs = { up: false, down: false, left: false, right: false, moveAngle: null, isMoving: false };
         this.angle = 0;
         this.selectedSlot = 0;
-        this.autoAttack = false;
 
         this.onAttack = null;
         this.onQuickHeal = null;
@@ -56,18 +55,18 @@ class InputHandler {
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             this.inputs.isMoving = true;
-        });
+        }, { passive: false });
 
         zone.addEventListener('touchmove', (e) => {
             if (!this.inputs.isMoving) return;
             const touch = e.touches[0];
             const dx = touch.clientX - touchStartX;
             const dy = touch.clientY - touchStartY;
-            if (Math.hypot(dx, dy) > 10) {
+            if (Math.hypot(dx, dy) > 8) {
                 this.inputs.moveAngle = Math.atan2(dy, dx);
-                this.angle = this.inputs.moveAngle; // Baktığı yönü de değiştir
+                this.angle = this.inputs.moveAngle;
             }
-        });
+        }, { passive: false });
 
         const endTouch = () => {
             this.inputs.isMoving = false;
@@ -80,7 +79,7 @@ class InputHandler {
         actionBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (this.onAttack) this.onAttack();
-        });
+        }, { passive: false });
     }
 
     initUI() {

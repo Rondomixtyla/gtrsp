@@ -15,12 +15,12 @@ const players = {};
 const resources = [];
 const structures = [];
 
-// Haritaya kaynak türetme (Meyve Çalısı, Ağaç, Taş, Altın)
-for (let i = 0; i < 140; i++) {
+// Haritaya kaynak türetme (Çalı, Ağaç, Taş, Altın)
+for (let i = 0; i < 150; i++) {
     let type = 'tree';
     let rand = Math.random();
     if (rand < 0.3) type = 'bush';
-    else if (rand < 0.6) type = 'tree';
+    else if (rand < 0.65) type = 'tree';
     else if (rand < 0.85) type = 'stone';
     else type = 'gold';
 
@@ -29,7 +29,7 @@ for (let i = 0; i < 140; i++) {
         x: Math.random() * (MAP_SIZE - 400) + 200,
         y: Math.random() * (MAP_SIZE - 400) + 200,
         type: type,
-        radius: type === 'bush' ? 30 : 40,
+        radius: type === 'bush' ? 32 : (type === 'tree' ? 45 : 38),
         health: 100
     });
 }
@@ -59,7 +59,6 @@ io.on('connection', (socket) => {
         inputs: { up: false, down: false, left: false, right: false, moveAngle: null, isMoving: false },
         resources: { wood: 100, stone: 100, gold: 0, food: 100 },
         selectedSlot: 0,
-        autoAttack: false,
         isAttacking: false
     };
 
@@ -71,7 +70,6 @@ io.on('connection', (socket) => {
         p.inputs = data.inputs;
         p.angle = data.angle;
         if (data.selectedSlot !== undefined) p.selectedSlot = data.selectedSlot;
-        if (data.autoAttack !== undefined) p.autoAttack = data.autoAttack;
     });
 
     socket.on('quickHeal', () => {
@@ -87,8 +85,9 @@ io.on('connection', (socket) => {
         if (!p) return;
 
         p.isAttacking = true;
+        setTimeout(() => { p.isAttacking = false; }, 150);
 
-        if (p.selectedSlot === 0) { // Çekiç / Balta
+        if (p.selectedSlot === 0) { // Çekiç / Vuruş
             resources.forEach(res => {
                 let dist = Math.hypot(res.x - p.x, res.y - p.y);
                 if (dist < p.radius + res.radius + 30) {
@@ -99,6 +98,10 @@ io.on('connection', (socket) => {
                     else if (res.type === 'bush') p.resources.food += 15;
 
                     p.xp += 10;
+                    if (p.xp >= 100) {
+                        p.age += 1;
+                        p.xp = 0;
+                    }
 
                     if (res.health <= 0) {
                         res.x = Math.random() * (MAP_SIZE - 400) + 200;
@@ -122,12 +125,12 @@ io.on('connection', (socket) => {
                     }
                 }
             }
-        } else if (p.selectedSlot === 1) { // Yemek yeme
+        } else if (p.selectedSlot === 1) { // Yemek Yeme
             if (p.resources.food >= 10 && p.health < p.maxHealth) {
                 p.resources.food -= 10;
                 p.health = Math.min(p.maxHealth, p.health + 20);
             }
-        } else if (p.selectedSlot >= 2) { // Yapı kurma
+        } else if (p.selectedSlot >= 2) { // Yapı Kurma
             const costs = [
                 {}, {},
                 { wood: 20 },           // Duvar
@@ -168,18 +171,15 @@ io.on('connection', (socket) => {
     });
 });
 
-// Hareket ve Oyun Döngüsü
 setInterval(() => {
     for (let id in players) {
         const p = players[id];
         let moveX = 0, moveY = 0;
 
         if (p.inputs.isMoving && p.inputs.moveAngle !== null) {
-            // Dokunmatik Joystick Hareketi
             moveX = Math.cos(p.inputs.moveAngle);
             moveY = Math.sin(p.inputs.moveAngle);
         } else {
-            // WASD / Yön Tuşları
             if (p.inputs.up) moveY -= 1;
             if (p.inputs.down) moveY += 1;
             if (p.inputs.left) moveX -= 1;

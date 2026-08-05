@@ -21,30 +21,29 @@
 
         <!-- Alt Ortadaki Envanter ve Yaş Barı -->
         <div id="bottom-hud">
-            <div id="age-label">AGE 0</div>
+            <div id="age-label">AGE <span id="age-num">0</span></div>
             <div id="xp-bar-bg"><div id="xp-bar-fill"></div></div>
             <div id="inventory-bar">
-                <div class="slot active" data-slot="0">🔨</div>
-                <div class="slot" data-slot="1">🍎</div>
-                <div class="slot" data-slot="2">🪵</div>
-                <div class="slot" data-slot="3">🕳️</div>
-                <div class="slot" data-slot="4">⚠️</div>
-                <div class="slot" data-slot="5">⚙️</div>
+                <div class="slot active" data-slot="0"><div class="icon-box">🔨</div></div>
+                <div class="slot" data-slot="1"><div class="icon-box">🍎</div></div>
+                <div class="slot" data-slot="2"><div class="icon-box">🪵</div></div>
+                <div class="slot" data-slot="3"><div class="icon-box">🕳️</div></div>
+                <div class="slot" data-slot="4"><div class="icon-box">⚠️</div></div>
+                <div class="slot" data-slot="5"><div class="icon-box">⚙️</div></div>
             </div>
         </div>
 
         <!-- Sağ Alttaki Kaynak Göstergeleri -->
         <div id="resource-panel">
-            <div class="res-item"><span class="icon">🍎</span><span id="res-food">100</span></div>
-            <div class="res-item"><span class="icon">🪵</span><span id="res-wood">100</span></div>
-            <div class="res-item"><span class="icon">🪨</span><span id="res-stone">100</span></div>
-            <div class="res-item"><span class="icon">🪙</span><span id="res-gold">0</span></div>
+            <div class="res-item"><span class="res-icon food-icon">🍎</span><span id="res-food">100</span></div>
+            <div class="res-item"><span class="res-icon wood-icon">🪵</span><span id="res-wood">100</span></div>
+            <div class="res-item"><span class="res-icon stone-icon">🪨</span><span id="res-stone">100</span></div>
+            <div class="res-item"><span class="res-icon gold-icon">🪙</span><span id="res-gold">0</span></div>
         </div>
 
-        <!-- Mobil Ekran Dokunmatik Joystick Alanı (Sol Taraf) -->
+        <!-- Dokunmatik Kontrol Alanı (Sol Taraf) -->
         <div id="joystick-zone"></div>
-        
-        <!-- Mobil Vurma / Eylem Butonu (Sağ Taraf) -->
+        <!-- Vurma Butonu (Sağ Taraf) -->
         <div id="action-btn">⚔️</div>
     </div>
 
