@@ -2,9 +2,15 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>GTRSP IO</title>
     <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
         body, html {
             margin: 0;
             padding: 0;
@@ -13,7 +19,6 @@
             overflow: hidden;
             background-color: #8cc34a;
             font-family: Arial, sans-serif;
-            user-select: none;
         }
 
         #gameCanvas {
@@ -26,7 +31,6 @@
             z-index: 1;
         }
 
-        /* Arayüz Elemanları (Canvas'ın üstünde durması için z-index: 10) */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -48,7 +52,6 @@
             border-radius: 6px;
             font-size: 14px;
             min-width: 160px;
-            text-align: left;
         }
 
         /* Alt Yaş ve İtem Barı */
@@ -132,14 +135,37 @@
             font-size: 9px;
             color: rgba(255, 255, 255, 0.4);
         }
+
+        /* Mobil Joystick Alanı */
+        #joystick-zone {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: auto;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Oyun Çizim Ekranı -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Sploop.io Tarzı Arayüz -->
     <div id="ui-layer">
         <div id="leaderboard">
             <b>Skor Tablosu</b>
@@ -151,6 +177,11 @@
             <div class="grid-cell">B1</div><div class="grid-cell">B2</div><div class="grid-cell">B3</div><div class="grid-cell">B4</div>
             <div class="grid-cell">C1</div><div class="grid-cell">C2</div><div class="grid-cell">C3</div><div class="grid-cell">C4</div>
             <div class="grid-cell">D1</div><div class="grid-cell">D2</div><div class="grid-cell">D3</div><div class="grid-cell">D4</div>
+        </div>
+
+        <!-- Mobil Dokunmatik Joystick -->
+        <div id="joystick-zone">
+            <div id="joystick-knob"></div>
         </div>
 
         <div id="ui-bottom">
@@ -168,8 +199,83 @@
         </div>
     </div>
 
-    <!-- Oyun Mantığını Yükleyen Scriptler -->
     <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // PC Kontrolleri (WASD + Mouse)
+        const keys = { w: false, a: false, s: false, d: false };
+        window.addEventListener('keydown', (e) => {
+            if (['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+                keys[e.key.toLowerCase()] = true;
+                sendMovement();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+                keys[e.key.toLowerCase()] = false;
+                sendMovement();
+            }
+        });
+
+        // Mobil Joystick Kontrolleri
+        const zone = document.getElementById('joystick-zone');
+        const knob = document.getElementById('joystick-knob');
+        let activeTouch = null;
+
+        zone.addEventListener('touchstart', (e) => {
+            activeTouch = e.touches[0];
+            moveKnob(activeTouch);
+        });
+
+        zone.addEventListener('touchmove', (e) => {
+            if (!activeTouch) return;
+            for (let touch of e.touches) {
+                if (touch.identifier === activeTouch.identifier) {
+                    moveKnob(touch);
+                    break;
+                }
+            }
+        });
+
+        const resetKnob = () => {
+            knob.style.transform = `translate(0px, 0px)`;
+            activeTouch = null;
+            if (window.socket) window.socket.emit('move', { x: 0, y: 0 });
+        };
+
+        zone.addEventListener('touchend', resetKnob);
+        zone.addEventListener('touchcancel', resetKnob);
+
+        function moveKnob(touch) {
+            const rect = zone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const dist = Math.hypot(dx, dy);
+            const maxRadius = rect.width / 2 - 25;
+
+            if (dist > maxRadius) {
+                dx = (dx / dist) * maxRadius;
+                dy = (dy / dist) * maxRadius;
+            }
+
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            if (window.socket) {
+                window.socket.emit('move', { x: dx / maxRadius, y: dy / maxRadius });
+            }
+        }
+
+        function sendMovement() {
+            let x = 0, y = 0;
+            if (keys.a) x -= 1;
+            if (keys.d) x += 1;
+            if (keys.w) y -= 1;
+            if (keys.s) y += 1;
+            if (window.socket) {
+                window.socket.emit('move', { x, y });
+            }
+        }
+    </script>
     <script src="game.js"></script>
     <script src="client.js"></script>
     <script src="app.js"></script>
