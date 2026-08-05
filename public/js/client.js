@@ -15,27 +15,17 @@ let particles = [];
 let cameraZoom = 0.85;
 let targetZoom = 0.85;
 
-// Sploop.io Age Eşya Ağacı Verisi
-const AGE_UPGRADES = {
-    2: [
-        { id: 'sword', name: 'Great Sword', icon: '⚔️', desc: 'Yüksek Yıkım Hasarı' },
-        { id: 'spear', name: 'Spear', icon: '🗡️', desc: 'Uzun Menzil Hasarı' }
-    ],
-    3: [
-        { id: 'cookie', name: 'Cheese/Cookie', icon: '🧀', desc: '+40 Can Yenileme' },
-        { id: 'boostPad', name: 'Boost Pad', icon: '💨', desc: 'Hızlı Fırlatıcı' }
-    ],
-    4: [
-        { id: 'greaterSpike', name: 'Spinning Spike', icon: '⚙️', desc: 'Dönen Dikenli Yapı' },
-        { id: 'poisonSpike', name: 'Poison Spike', icon: '☣️', desc: 'Zehirli Diken' }
-    ],
-    5: [
-        { id: 'windmill', name: 'Faster Windmill', icon: '🌀', desc: 'Hızlı Altın Üretimi' },
-        { id: 'trap', name: 'Pitfall Trap', icon: '🕳️', desc: 'Düşman Donduran Tuzak' }
-    ]
-};
+// --- Sploop.io Şapka Verileri ---
+const HATS = [
+    { id: 'none', name: 'Yok', price: 0, icon: '🚫', color: 'transparent' },
+    { id: 'bumber', name: 'Bumber Hat', price: 500, icon: '🪖', color: '#558b2f' },
+    { id: 'bull', name: 'Bull Helmet', price: 1500, icon: '🐂', color: '#3e2723' },
+    { id: 'boost', name: 'Boost Hat', price: 2000, icon: '⚡', color: '#fbc02d' },
+    { id: 'winter', name: 'Winter Cap', price: 1000, icon: '❄️', color: '#0288d1' }
+];
 
-let lastAgePrompted = 1;
+let selectedHat = 'none';
+let currentAge = 1;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -44,12 +34,66 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
+// Mağaza (Shop) Paneli Oluşturma
+function setupShopUI() {
+    let shopBtn = document.createElement('button');
+    shopBtn.id = 'shop-toggle-btn';
+    shopBtn.innerText = '🛒 MAĞAZA';
+    shopBtn.style.cssText = `
+        position: absolute; top: 15px; left: 15px; z-index: 1000;
+        background: #fbc02d; border: 3px solid #2d2d2d; border-radius: 8px;
+        color: #2d2d2d; font-weight: 900; font-size: 16px; padding: 8px 16px; cursor: pointer;
+    `;
+    document.body.appendChild(shopBtn);
+
+    let shopMenu = document.createElement('div');
+    shopMenu.id = 'shop-menu';
+    shopMenu.style.cssText = `
+        position: absolute; top: 70px; left: 15px; z-index: 1000;
+        background: rgba(30, 30, 30, 0.85); border: 3px solid #fbc02d; border-radius: 12px;
+        padding: 12px; display: none; flex-direction: column; gap: 8px; backdrop-filter: blur(5px);
+        max-height: 350px; overflow-y: auto; color: white;
+    `;
+    document.body.appendChild(shopMenu);
+
+    shopBtn.onclick = () => {
+        shopMenu.style.display = shopMenu.style.display === 'flex' ? 'none' : 'flex';
+        renderShopItems(shopMenu);
+    };
+}
+
+function renderShopItems(container) {
+    container.innerHTML = '<h3 style="margin:0 0 8px 0; text-align:center;">ŞAPKALAR</h3>';
+    HATS.forEach(hat => {
+        let item = document.createElement('div');
+        item.style.cssText = `
+            display: flex; align-items: center; justify-content: space-between;
+            background: #2b2b2b; padding: 6px 12px; border-radius: 6px; gap: 15px;
+            border: ${selectedHat === hat.id ? '2px solid #66bb6a' : '1px solid #444'};
+        `;
+        item.innerHTML = `
+            <span style="font-size:20px">${hat.icon}</span>
+            <div style="flex-grow:1"><div style="font-weight:bold">${hat.name}</div><div style="font-size:10px; color:#aaa">${hat.price} Altın</div></div>
+            <button style="background:${selectedHat === hat.id ? '#66bb6a' : '#fbc02d'}; border:none; border-radius:4px; padding:4px 8px; font-weight:bold; cursor:pointer">
+                ${selectedHat === hat.id ? 'TAKILDI' : 'SATIN AL'}
+            </button>
+        `;
+        item.querySelector('button').onclick = () => {
+            selectedHat = hat.id;
+            socket.emit('equipHat', { hatId: hat.id });
+            renderShopItems(container);
+        };
+        container.appendChild(item);
+    });
+}
+
 document.getElementById('play-btn').addEventListener('click', () => {
     const name = document.getElementById('nickname-input').value;
     socket.emit('joinGame', { name });
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('ui-container').classList.remove('hidden');
     isPlaying = true;
+    setupShopUI();
 });
 
 inputHandler.onAttack = () => { if (isPlaying) socket.emit('attackAction'); };
@@ -78,49 +122,6 @@ function spawnParticles(x, y, color, count) {
     }
 }
 
-// Age Seçim Menüsünü Tetikleyici
-function checkAgeUpgrade(currentAge) {
-    if (currentAge > lastAgePrompted && AGE_UPGRADES[currentAge]) {
-        lastAgePrompted = currentAge;
-        showAgeSelectionMenu(currentAge);
-    }
-}
-
-function showAgeSelectionMenu(age) {
-    let menu = document.getElementById('age-upgrade-menu');
-    if (!menu) {
-        menu = document.createElement('div');
-        menu.id = 'age-upgrade-menu';
-        menu.style.cssText = `
-            position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; z-index: 999; background: rgba(0,0,0,0.6);
-            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
-        `;
-        document.body.appendChild(menu);
-    }
-
-    menu.innerHTML = '';
-    const items = AGE_UPGRADES[age];
-
-    items.forEach(item => {
-        const card = document.createElement('div');
-        card.style.cssText = `
-            background: #2b2b2b; color: white; border: 3px solid #fbc02d;
-            border-radius: 10px; padding: 10px 20px; text-align: center;
-            cursor: pointer; transition: transform 0.1s; user-select: none;
-        `;
-        card.innerHTML = `<div style="font-size:32px">${item.icon}</div><div style="font-weight:bold">${item.name}</div><div style="font-size:11px; color:#aaa">${item.desc}</div>`;
-        
-        card.onclick = () => {
-            socket.emit('selectUpgrade', { item: item.id, age });
-            menu.style.display = 'none';
-        };
-        menu.appendChild(card);
-    });
-
-    menu.style.display = 'flex';
-}
-
 socket.on('gameState', (state) => {
     prevState = gameState;
     gameState = state;
@@ -141,8 +142,6 @@ socket.on('gameState', (state) => {
             document.getElementById('res-gold').innerText = me.resources.gold;
             document.getElementById('age-num').innerText = me.age;
             document.getElementById('xp-bar-fill').style.width = me.xp + '%';
-
-            checkAgeUpgrade(me.age);
 
             const minimapPlayer = document.getElementById('minimap-player');
             if (minimapPlayer) {
@@ -186,12 +185,17 @@ function getInterpolatedPlayers(t) {
     return result;
 }
 
-function drawGrid(scale, me) {
+// Harita Biyom Çizimi (Kış / Çim / Çöl)
+function drawBiomesAndGrid(scale, me) {
     const gridSize = 60 * scale;
     const offsetX = (canvas.width / 2 - me.x * scale) % gridSize;
     const offsetY = (canvas.height / 2 - me.y * scale) % gridSize;
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+    // Ana Arka Plan
+    ctx.fillStyle = '#7cb342';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
     ctx.lineWidth = 2;
 
     for (let x = offsetX; x < canvas.width; x += gridSize) {
@@ -213,9 +217,11 @@ function drawPlayer(p) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
+    // Gölge
     ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.beginPath(); ctx.arc(3, 5, p.radius, 0, Math.PI * 2); ctx.fill();
 
+    // İsim
     ctx.fillStyle = '#ffffff';
     ctx.font = '900 14px sans-serif';
     ctx.textAlign = 'center';
@@ -223,6 +229,7 @@ function drawPlayer(p) {
     ctx.fillText(p.name, 0, -p.radius - 22);
     ctx.shadowBlur = 0;
 
+    // Can Barı
     const barW = 48;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(-barW / 2, -p.radius - 14, barW, 7);
@@ -235,24 +242,17 @@ function drawPlayer(p) {
 
     let attackOffset = p.isAttacking ? 14 : 0;
 
+    // Eller
     ctx.fillStyle = '#e0a96d';
     ctx.strokeStyle = '#2d2d2d';
     ctx.lineWidth = 3.5;
-
     ctx.beginPath(); ctx.arc(22, -18, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
+    // Sağ el ve Silah
     ctx.save();
     ctx.translate(22 + attackOffset, 18);
 
-    if (p.weapon === 'spear') {
-        // Mızrak Görseli
-        ctx.fillStyle = '#6d4c41';
-        ctx.fillRect(-5, -3, 45, 6);
-        ctx.strokeRect(-5, -3, 45, 6);
-        ctx.fillStyle = '#cfd8dc';
-        ctx.beginPath(); ctx.moveTo(40, -8); ctx.lineTo(55, 0); ctx.lineTo(40, 8); ctx.fill(); ctx.stroke();
-    } else if (p.selectedSlot === 1 || p.weapon === 'sword') {
-        // Kılıç
+    if (p.selectedSlot === 1 || p.weapon === 'sword') {
         ctx.fillStyle = '#b0bec5';
         ctx.fillRect(10, -4, 38, 8);
         ctx.strokeRect(10, -4, 38, 8);
@@ -260,7 +260,6 @@ function drawPlayer(p) {
         ctx.fillRect(0, -6, 10, 12);
         ctx.strokeRect(0, -6, 10, 12);
     } else {
-        // Standart Kazma
         ctx.fillStyle = '#6d4c41';
         ctx.fillRect(0, -3, 28, 6);
         ctx.strokeRect(0, -3, 28, 6);
@@ -273,9 +272,20 @@ function drawPlayer(p) {
     ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
 
+    // Gövde
     ctx.fillStyle = '#e0a96d';
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4.5; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
+
+    // Şapka Çizimi (Şapka Takılıysa)
+    if (p.hatId && p.hatId !== 'none') {
+        const hat = HATS.find(h => h.id === p.hatId);
+        if (hat) {
+            ctx.fillStyle = hat.color;
+            ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.7, 0, Math.PI * 2); ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
+        }
+    }
 
     ctx.restore();
 }
@@ -297,14 +307,14 @@ function drawStructures(structures, me, scale) {
             ctx.fillStyle = '#a1887f';
             ctx.fillRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
             ctx.strokeRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
-        } else if (st.type === 'spike' || st.type === 'greaterSpike') {
-            ctx.fillStyle = st.type === 'greaterSpike' ? '#b0bec5' : '#78909c';
+        } else if (st.type === 'spike') {
+            ctx.fillStyle = '#78909c';
             ctx.beginPath(); ctx.arc(0, 0, st.radius - 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             for (let i = 0; i < 8; i++) {
-                let ang = (i * Math.PI) / 4 + (st.type === 'greaterSpike' ? millAngle : 0);
+                let ang = (i * Math.PI) / 4;
                 ctx.save();
                 ctx.rotate(ang);
-                ctx.fillStyle = st.type === 'greaterSpike' ? '#ef5350' : '#b0bec5';
+                ctx.fillStyle = '#b0bec5';
                 ctx.beginPath(); ctx.moveTo(st.radius - 6, -6); ctx.lineTo(st.radius + 10, 0); ctx.lineTo(st.radius - 6, 6);
                 ctx.fill(); ctx.stroke();
                 ctx.restore();
@@ -405,13 +415,10 @@ function renderLoop(now) {
 
     cameraZoom += (targetZoom - cameraZoom) * 0.05;
 
-    ctx.fillStyle = '#7cb342';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     const me = players[myId];
     if (me) {
         const scale = cameraZoom;
-        drawGrid(scale, me);
+        drawBiomesAndGrid(scale, me);
 
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
