@@ -3,7 +3,6 @@ const canvas = document.createElement('canvas');
 canvas.id = 'gameCanvas';
 document.body.appendChild(canvas);
 
-// Performans için alpha kapatıldı ve isobilgi render ayarları optimize edildi
 const ctx = canvas.getContext('2d', { alpha: false });
 const dpr = window.devicePixelRatio || 1;
 
@@ -14,8 +13,6 @@ let inputs = { up: false, down: false, left: false, right: false };
 let playerAngle = 0;
 let isAttacking = false;
 let selectedSkinColor = '#fbc093';
-
-// Aktif ekrandaki chat mesajlarını tutan liste (5-6 saniye silinme mantığı için)
 let activeChatMessages = [];
 
 let leftTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
@@ -31,7 +28,6 @@ function resize() {
 window.addEventListener('resize', resize); 
 resize();
 
-// Renk Seçim Mantığı
 document.querySelectorAll('.color-option').forEach(el => {
     el.onclick = () => {
         document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
@@ -54,22 +50,20 @@ window.selectSlot = function(slot) {
         else el.classList.remove('active');
     });
 };
-window.toggleModal = function(id) { /* Modaller */ };
+window.toggleModal = function(id) {};
 
-// Chat Yazıldığında Anında Herkesin Görmesi ve 5-6 Saniye İçinde Kaybolması
 const chatInput = document.getElementById('chat-input');
 if(chatInput) {
     chatInput.addEventListener('keypress', e => {
         if (e.key === 'Enter' && chatInput.value.trim() !== '') {
             socket.emit('chatMsg', chatInput.value); 
             chatInput.value = '';
-            chatInput.blur(); // Mobilde klavyeyi kapat
+            chatInput.blur();
         }
     });
 }
 
 socket.on('chatMessage', data => {
-    // Oyuncunun üzerine veya chat havuzuna ekle (5500 milisaniye = 5.5 saniye sonra silinir)
     activeChatMessages.push({
         id: data.id,
         text: data.text,
@@ -78,7 +72,6 @@ socket.on('chatMessage', data => {
     });
 });
 
-// Mobil & Dokunmatik Kontroller (Optimizasyonlu)
 window.addEventListener('touchstart', e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -138,8 +131,6 @@ socket.on('gameState', state => {
     socket.emit('playerInput', { inputs, angle: playerAngle, selectedSlot });
 });
 
-// ÇİZİM MOTORU (Performans & Doğru Orantılı Karakter Boyutları)
-
 function drawGrid(me) {
     ctx.fillStyle = '#78b546'; 
     ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
@@ -182,17 +173,31 @@ function drawSploopStone(x, y, radius) {
 function drawSploopPlayer(p, isMe) {
     ctx.save(); ctx.translate(p.x, p.y);
 
-    // Orijinal Sploop.io Oranlarında Küçültülmüş & Dengelenmiş Karakter
     let r = p.radius || 22;
 
-    // İsim ve Can Barı
+    // Lider Kontrolü (En çok kill/skor)
+    let isLeader = false;
+    let topKillerId = null;
+    if (gameState.leaderboard && gameState.leaderboard.length > 0) {
+        topKillerId = gameState.leaderboard[0].id;
+        if (p.id === topKillerId) isLeader = true;
+    }
+
+    // İsim & Kurukafa / Taç Simgeleri
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
-    ctx.strokeText(p.name, 0, -r - 22);
-    ctx.fillText(p.name, 0, -r - 22);
+    
+    let displayName = p.name;
+    if (isLeader) displayName = "👑 " + displayName;
+    else if (p.score === Math.max(...Object.values(gameState.players).map(pl => pl.score || 0))) {
+        displayName = "☠️ " + displayName;
+    }
+
+    ctx.strokeText(displayName, 0, -r - 22);
+    ctx.fillText(displayName, 0, -r - 22);
 
     ctx.fillStyle = '#333'; ctx.fillRect(-22, -r - 12, 44, 6);
     ctx.fillStyle = '#4caf50'; ctx.fillRect(-22, -r - 12, (p.health / p.maxHealth) * 44, 6);
@@ -212,16 +217,13 @@ function drawSploopPlayer(p, isMe) {
     }
     ctx.restore();
 
-    // Eller
     ctx.fillStyle = p.color || '#fbc093'; 
     ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(r - 4, 8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.arc(r - 4, -8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Gövde (Kafa)
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Yüz Detayları (Gözler - Orijinal Sploop Hissiyatı)
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.arc(r * 0.3, -6, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(r * 0.3, 6, 3, 0, Math.PI * 2); ctx.fill();
@@ -230,7 +232,6 @@ function drawSploopPlayer(p, isMe) {
 }
 
 function drawUIOverlay() {
-    // Leaderboard (Sağ Üst)
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fillRect(window.innerWidth - 190, 60, 175, 130);
@@ -245,7 +246,8 @@ function drawUIOverlay() {
     let rankY = 105;
     if (gameState.leaderboard && gameState.leaderboard.length > 0) {
         gameState.leaderboard.forEach((entry, idx) => {
-            ctx.fillText(`${idx + 1}. ${entry.name} - ${entry.score}`, window.innerWidth - 180, rankY);
+            let prefix = idx === 0 ? "👑 " : "";
+            ctx.fillText(`${prefix}${idx + 1}. ${entry.name} - ${entry.score}`, window.innerWidth - 180, rankY);
             rankY += 20;
         });
     } else {
@@ -253,7 +255,7 @@ function drawUIOverlay() {
     }
     ctx.restore();
 
-    // Minimap (Sol Alt)
+    // Minimap ve Lider İşareti
     ctx.save();
     const mapSize = 110;
     const mapX = 20;
@@ -264,6 +266,18 @@ function drawUIOverlay() {
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 2; ctx.stroke();
     
+    // Haritada Birincinin Konumu (Sarı/Yıldız nokta)
+    if (gameState.leaderboard && gameState.leaderboard.length > 0) {
+        let topId = gameState.leaderboard[0].id;
+        let leaderObj = gameState.players[topId];
+        if (leaderObj) {
+            let lX = mapX + (leaderObj.x / 4000) * mapSize;
+            let lY = mapY + (leaderObj.y / 4000) * mapSize;
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath(); ctx.arc(lX, lY, 4, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
     const me = gameState.players[myId];
     if (me) {
         let dotX = mapX + (me.x / 4000) * mapSize;
@@ -273,7 +287,6 @@ function drawUIOverlay() {
     }
     ctx.restore();
 
-    // Anlık Chat Mesajlarını Oyuncuların Üzerinde Gösterme ve Süre Aşımı Kontrolü
     const now = Date.now();
     activeChatMessages = activeChatMessages.filter(msg => msg.expireTime > now);
 
