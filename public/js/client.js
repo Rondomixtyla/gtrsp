@@ -6,22 +6,9 @@ const inputHandler = new InputHandler(canvas);
 
 let myId = null;
 let gameState = { players: {}, resources: [], structures: [], leaderboard: [] };
-let prevState = null;
-let lastStateTime = 0;
 let MAP_SIZE = 4000;
 let isPlaying = false;
-let floatingTexts = [];
-let particles = [];
 let cameraZoom = 0.85;
-
-const HATS = [
-    { id: 'none', name: 'Yok', price: 0, icon: '🚫' },
-    { id: 'bush', name: 'Bush Hat', price: 300, icon: '🌿' },
-    { id: 'bumber', name: 'Bumber Hat', price: 500, icon: '🪖' },
-    { id: 'bull', name: 'Bull Helmet', price: 1500, icon: '🐂' },
-    { id: 'boost', name: 'Boost Hat', price: 2000, icon: '⚡' },
-    { id: 'winter', name: 'Winter Cap', price: 1000, icon: '❄️' }
-];
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -48,10 +35,7 @@ socket.on('init', (data) => {
 });
 
 socket.on('gameState', (state) => {
-    prevState = gameState;
     gameState = state;
-    lastStateTime = performance.now();
-
     if (isPlaying) {
         socket.emit('playerInput', {
             inputs: inputHandler.inputs,
@@ -71,18 +55,17 @@ socket.on('gameState', (state) => {
     }
 });
 
-// Zemin Izgarası ve Renk Tonu
+// Zemin ve Harita Sınırı (Grid & Harita Dışı Beyazlık)
 function drawGrid(scale, me) {
-    const gridSize = 70 * scale;
+    ctx.fillStyle = '#7ca942'; // Sploop çim rengi
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const gridSize = 65 * scale;
     const offsetX = (canvas.width / 2 - me.x * scale) % gridSize;
     const offsetY = (canvas.height / 2 - me.y * scale) % gridSize;
 
-    // Sploop Orijinal Çim Rengi
-    ctx.fillStyle = '#8ecc51';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = '#7cb942';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+    ctx.lineWidth = 2;
 
     for (let x = offsetX; x < canvas.width; x += gridSize) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
@@ -92,134 +75,128 @@ function drawGrid(scale, me) {
     }
 }
 
-// Birebir Sploop.io Silah Çizimleri & Vuruş Animasyonu
-function drawWeapon(type, isAttacking) {
+// Orijinal Sploop Çekiç ve El Çizimi
+function drawWeapon(isAttacking) {
     ctx.save();
-    
-    // Saldırı Animasyonu (Kavisli Savurma)
-    let swingAngle = isAttacking ? Math.sin(performance.now() * 0.04) * 0.9 : 0;
-    ctx.rotate(swingAngle);
+    let swing = isAttacking ? Math.sin(performance.now() * 0.05) * 0.8 : 0;
+    ctx.rotate(swing);
 
-    ctx.lineWidth = 4.5;
-    ctx.strokeStyle = '#1d1d1d';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#1a1a1a';
 
-    if (type === 'sword') {
-        // Çelik Kılıç
-        ctx.fillStyle = '#d0d7de';
-        ctx.beginPath();
-        ctx.moveTo(15, -6); ctx.lineTo(55, -4); ctx.lineTo(68, 0); ctx.lineTo(55, 4); ctx.lineTo(15, 6);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Çekiç Sapı (Ahşap)
+    ctx.fillStyle = '#5c3a21';
+    ctx.fillRect(10, -5, 38, 10);
+    ctx.strokeRect(10, -5, 38, 10);
 
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(12, -12, 6, 24); ctx.strokeRect(12, -12, 6, 24);
-        ctx.fillStyle = '#3f3f46';
-        ctx.fillRect(-6, -4, 18, 8); ctx.strokeRect(-6, -4, 18, 8);
-    } else if (type === 'spear') {
-        // Mızrak
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(-12, -4, 75, 8); ctx.strokeRect(-12, -4, 75, 8);
-        ctx.fillStyle = '#94a3b8';
-        ctx.beginPath();
-        ctx.moveTo(60, -10); ctx.lineTo(88, 0); ctx.lineTo(60, 10);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-    } else {
-        // Kazma / Balta
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(-5, -4, 45, 8); ctx.strokeRect(-5, -4, 45, 8);
-        ctx.fillStyle = '#64748b';
-        ctx.beginPath();
-        ctx.arc(36, 0, 18, -Math.PI / 2, Math.PI / 2, false);
-        ctx.lineTo(28, 0);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
+    // Çekiç Kafası (Koyu Metal)
+    ctx.fillStyle = '#4a4e69';
+    ctx.beginPath();
+    ctx.roundRect(40, -18, 22, 36, 4);
+    ctx.fill();
+    ctx.stroke();
 
-    // Eller
-    ctx.fillStyle = '#eaaf85';
-    ctx.beginPath(); ctx.arc(12, 14, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(30, 8, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Çekiç Metal Detayı (Açık Çelik Şerit)
+    ctx.fillStyle = '#9a8c98';
+    ctx.fillRect(45, -18, 12, 36);
+    ctx.strokeRect(45, -18, 12, 36);
+
+    // Sol ve Sağ Eller (Gövdenin önünde tutan yumruklar)
+    ctx.fillStyle = '#e6b88a';
+    ctx.beginPath(); ctx.arc(16, 15, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(28, 6, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
     ctx.restore();
 }
 
-// Kaliteli Oyuncu Çizimi
+// Orijinal Karakter
 function drawPlayer(p) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
-    // Derin Gölge
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.beginPath(); ctx.arc(4, 6, p.radius || 35, 0, Math.PI * 2); ctx.fill();
+    // Gölge
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.beginPath(); ctx.arc(3, 5, 35, 0, Math.PI * 2); ctx.fill();
 
     // İsim
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 14px sans-serif';
+    ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'center';
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    ctx.strokeText(p.name, 0, - (p.radius || 35) - 24);
-    ctx.fillText(p.name, 0, - (p.radius || 35) - 24);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3.5;
+    ctx.strokeText(p.name, 0, -52);
+    ctx.fillText(p.name, 0, -52);
 
     // Can Barı
-    const barW = 50;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(-barW / 2, - (p.radius || 35) - 14, barW, 7);
+    const barW = 54;
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.roundRect(-barW / 2, -42, barW, 8, 4); ctx.fill();
     const hpRatio = Math.max(0, p.health / p.maxHealth);
-    ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : hpRatio > 0.25 ? '#eab308' : '#ef4444';
-    ctx.fillRect(-barW / 2, - (p.radius || 35) - 14, barW * hpRatio, 7);
+    ctx.fillStyle = hpRatio > 0.5 ? '#57cc99' : hpRatio > 0.25 ? '#ffb703' : '#ff4d6d';
+    ctx.beginPath(); ctx.roundRect(-barW / 2, -42, barW * hpRatio, 8, 4); ctx.fill();
 
     ctx.rotate(p.angle);
 
-    // Silah VE Eller
-    const weaponType = (p.selectedSlot === 1 || p.weapon === 'sword') ? 'sword' : (p.weapon === 'spear' ? 'spear' : 'pickaxe');
-    drawWeapon(weaponType, p.isAttacking);
+    // Silah
+    drawWeapon(p.isAttacking);
 
-    // Karakter Gövdesi (Sploop Ten Rengi)
-    ctx.fillStyle = '#eaaf85';
-    ctx.beginPath(); ctx.arc(0, 0, p.radius || 35, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 5; ctx.strokeStyle = '#1d1d1d'; ctx.stroke();
+    // Gövde (Sploop Ten Tonu + Siyah Kalın Kontür)
+    ctx.fillStyle = '#e6b88a';
+    ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.stroke();
 
     ctx.restore();
 }
 
-// Orijinal Sploop Ağaç, Taş ve Maden Çizimleri
+// Orijinal Sploop Kayalar, Çalılar ve Meyveler
 function drawResources(resources) {
     resources.forEach(res => {
         ctx.save();
         ctx.translate(res.x, res.y);
-        const r = res.radius || 45;
-
-        // Gölge
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.beginPath(); ctx.arc(5, 7, r, 0, Math.PI * 2); ctx.fill();
-
-        ctx.lineWidth = 5; ctx.strokeStyle = '#1d1d1d';
+        ctx.lineWidth = 4.5;
+        ctx.strokeStyle = '#1a1a1a';
 
         if (res.type === 'tree') {
-            // Katmanlı Detaylı Ağaç
-            ctx.fillStyle = '#15803d';
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#16a34a';
-            ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.2, r * 0.65, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#22c55e';
-            ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.35, r * 0.35, 0, Math.PI * 2); ctx.fill();
+            // Meyveli Çalı / Ağaç
+            ctx.fillStyle = '#52b788';
+            ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#74c69d';
+            ctx.beginPath(); ctx.arc(-12, -12, 28, 0, Math.PI * 2); ctx.fill();
+
+            // Kırmızı Böğürtlenler / Meyveler
+            ctx.fillStyle = '#d90429';
+            [[-18, 10], [12, -18], [15, 15], [-8, -22]].forEach(pt => {
+                ctx.beginPath(); ctx.arc(pt[0], pt[1], 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            });
         } else if (res.type === 'stone') {
-            // Detaylı Kaya
-            ctx.fillStyle = '#64748b';
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#94a3b8';
-            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.25, r * 0.55, 0, Math.PI * 2); ctx.fill();
+            // Köşeli Kaya (Polygon Kaya Çizimi)
+            ctx.fillStyle = '#6c757d';
+            ctx.beginPath();
+            ctx.moveTo(-35, -20); ctx.lineTo(-10, -42); ctx.lineTo(30, -30);
+            ctx.lineTo(42, 10); ctx.lineTo(20, 38); ctx.lineTo(-25, 35); ctx.lineTo(-40, 5);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // Kaya Açık Yüzeyi
+            ctx.fillStyle = '#adb5bd';
+            ctx.beginPath();
+            ctx.moveTo(-20, -15); ctx.lineTo(-5, -30); ctx.lineTo(20, -20); ctx.lineTo(10, 5); ctx.lineTo(-15, 10);
+            ctx.closePath(); ctx.fill();
         } else if (res.type === 'gold') {
             // Altın Madeni
-            ctx.fillStyle = '#eab308';
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#fef08a';
-            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.25, r * 0.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffb703';
+            ctx.beginPath();
+            ctx.moveTo(-28, -15); ctx.lineTo(0, -35); ctx.lineTo(32, -18);
+            ctx.lineTo(35, 18); ctx.lineTo(5, 35); ctx.lineTo(-30, 20);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
         }
 
         ctx.restore();
     });
 }
 
-function renderLoop(now) {
+function renderLoop() {
     const me = gameState.players[myId];
     if (me) {
         const scale = cameraZoom;
