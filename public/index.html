@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sploop.io Full Clone - GTRSP</title>
+    <title>Sploop.io Ultimate Multiplayer</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #5c9432; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #gameCanvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
-        /* GİRİŞ EKRANI */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 100;
+            background: rgba(0,0,0,0.7); z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         .menu-box {
             background: #2a3a1e; border: 4px solid #4a6b32; padding: 30px; border-radius: 12px;
-            text-align: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px;
+            text-align: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 320px;
         }
         .menu-box h1 { margin: 0 0 20px 0; font-size: 28px; color: #a4de02; text-shadow: 2px 2px 0 #000; }
         .menu-box input {
@@ -29,47 +28,43 @@
             color: white; font-weight: bold; font-size: 18px; cursor: pointer; text-shadow: 1px 1px 0 #000;
         }
 
-        /* ARAYÜZ KATMANI */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
 
-        /* CANLI SIRALAMA */
+        #resource-bar {
+            position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.6);
+            padding: 8px 14px; border-radius: 8px; color: white; font-weight: bold; font-size: 14px;
+            display: flex; gap: 15px; border: 2px solid rgba(255,255,255,0.2);
+        }
+
         #leaderboard {
-            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white;
-            padding: 12px; border-radius: 8px; font-size: 13px; min-width: 190px; border: 2px solid rgba(255,255,255,0.1);
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: white;
+            padding: 12px; border-radius: 8px; font-size: 13px; min-width: 190px; border: 2px solid rgba(255,255,255,0.2);
         }
         #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; color: #ffca28; }
         .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; gap: 10px; }
         .lb-row.me { color: #8bc34a; font-weight: bold; }
 
-        /* KAYNAK SAYACI */
-        #resource-bar {
-            position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5);
-            padding: 8px 14px; border-radius: 8px; color: white; font-weight: bold; font-size: 14px;
-            display: flex; gap: 15px; border: 2px solid rgba(255,255,255,0.1);
-        }
-
-        /* ALT PANEL & ENVANTER */
         #ui-bottom {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
         #health-container {
             width: 220px; height: 16px; background: rgba(0,0,0,0.6); border-radius: 8px;
-            overflow: hidden; border: 2px solid rgba(0,0,0,0.3);
+            overflow: hidden; border: 2px solid rgba(0,0,0,0.3); position: relative;
         }
-        #health-bar { width: 100%; height: 100%; background: #4caf50; }
+        #health-bar { width: 100%; height: 100%; background: #4caf50; transition: width 0.1s; }
+        #health-text { position: absolute; width: 100%; text-align: center; font-size: 10px; color: white; font-weight: bold; top: 1px; }
 
         #item-bar { display: flex; gap: 8px; pointer-events: auto; }
         .slot {
-            width: 50px; height: 50px; background: rgba(0,0,0,0.5); border: 3px solid rgba(255,255,255,0.2);
+            width: 50px; height: 50px; background: rgba(0,0,0,0.6); border: 3px solid rgba(255,255,255,0.2);
             border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer;
         }
-        .slot.active { border-color: #ffca28; background: rgba(255,255,255,0.2); }
+        .slot.active { border-color: #ffca28; background: rgba(255,255,255,0.3); }
 
-        /* MINIMAP */
         #minimap-container {
             position: absolute; bottom: 15px; left: 15px; width: 100px; height: 100px;
-            background: rgba(0,0,0,0.4); border: 2px solid rgba(0,0,0,0.5); border-radius: 6px;
+            background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); border-radius: 6px;
         }
         #minimap-grid {
             width: 100%; height: 100%; display: grid;
@@ -81,7 +76,6 @@
             border-radius: 50%; border: 1px solid white; transform: translate(-50%, -50%); pointer-events: none;
         }
 
-        /* JOYSTICKLER */
         .joystick-zone {
             position: absolute; bottom: 20px; width: 110px; height: 110px;
             border-radius: 50%; pointer-events: auto; touch-action: none;
@@ -99,7 +93,7 @@
     <div id="menu-overlay">
         <div class="menu-box">
             <h1>SPLOOP.IO</h1>
-            <input type="text" id="nickname" placeholder="Oyuncu Adı" value="Oyuncu" maxlength="12">
+            <input type="text" id="nickname" placeholder="Oyuncu Adı" value="Savaşçı" maxlength="12">
             <button onclick="startGame()">OYNA</button>
         </div>
     </div>
@@ -110,6 +104,7 @@
         <div id="resource-bar">
             <span>🪵 <span id="res-wood">100</span></span>
             <span>🪨 <span id="res-stone">50</span></span>
+            <span>🪙 <span id="res-gold">0</span></span>
         </div>
 
         <div id="leaderboard">
@@ -131,13 +126,16 @@
         <div id="right-joystick-zone" class="joystick-zone"><div id="right-knob" class="joystick-knob"></div></div>
 
         <div id="ui-bottom">
-            <div id="health-container"><div id="health-bar"></div></div>
+            <div id="health-container">
+                <div id="health-bar"></div>
+                <div id="health-text">100 / 100</div>
+            </div>
             <div id="item-bar">
-                <div class="slot active" onclick="selectSlot(0)">🔨</div>
-                <div class="slot" onclick="selectSlot(1)">🍎</div>
-                <div class="slot" onclick="selectSlot(2)">🍯</div>
-                <div class="slot" onclick="selectSlot(3)">🛡️</div>
-                <div class="slot" onclick="selectSlot(4)">🪵</div>
+                <div class="slot active" onclick="selectSlot(0)" title="Çekiç">🔨</div>
+                <div class="slot" onclick="selectSlot(1)" title="Duvar">🪵</div>
+                <div class="slot" onclick="selectSlot(2)" title="Spike (Diken)">⚠️</div>
+                <div class="slot" onclick="selectSlot(3)" title="Trap (Kapan)">🕳️</div>
+                <div class="slot" onclick="selectSlot(4)" title="Windmill (Değirmen)">⚙️</div>
             </div>
         </div>
     </div>
@@ -153,39 +151,51 @@
         resize();
 
         let gameStarted = false;
-        let otherPlayers = {};
+        let players = {};
         let structures = [];
-        let selectedSlot = 0; // 0: Çekiç, 4: Ahşap Duvar
+        let resources = [];
+        let selectedSlot = 0; // 0: Çekiç, 1: Wall, 2: Spike, 3: Trap, 4: Windmill
 
         const player = {
-            x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Oyuncu", score: 0,
-            wood: 100, stone: 50, attacking: false, attackAnim: 0
+            x: 2000, y: 2000, radius: 25, angle: 0, speed: 4, name: "Savaşçı", score: 0,
+            gold: 0, health: 100, maxHealth: 100, wood: 100, stone: 50, attacking: false, attackAnim: 0
         };
 
         const mapSize = 4000;
-        const resources = [];
-        for(let i = 0; i < 120; i++) {
-            resources.push({
-                x: Math.random() * (mapSize - 200) + 100,
-                y: Math.random() * (mapSize - 200) + 100,
-                type: Math.random() > 0.5 ? 'tree' : 'stone',
-                radius: Math.random() > 0.5 ? 40 : 30
-            });
-        }
 
         socket.on('initGame', (data) => {
-            otherPlayers = data.players;
+            players = data.players;
             structures = data.structures;
-            if(otherPlayers[socket.id]) {
-                player.x = otherPlayers[socket.id].x;
-                player.y = otherPlayers[socket.id].y;
+            resources = data.resources;
+            if(players[socket.id]) {
+                player.x = players[socket.id].x;
+                player.y = players[socket.id].y;
             }
         });
 
-        socket.on('newPlayer', p => otherPlayers[p.id] = p);
-        socket.on('playerMoved', p => { if(otherPlayers[p.id]) otherPlayers[p.id] = p; });
-        socket.on('removePlayer', id => delete otherPlayers[id]);
-        socket.on('structurePlaced', st => structures.push(st));
+        socket.on('updatePlayers', (serverPlayers) => {
+            players = serverPlayers;
+            if(players[socket.id]) {
+                player.wood = players[socket.id].wood;
+                player.stone = players[socket.id].stone;
+                player.gold = players[socket.id].gold;
+                player.score = players[socket.id].score;
+                player.health = players[socket.id].health;
+                
+                document.getElementById('res-wood').innerText = player.wood;
+                document.getElementById('res-stone').innerText = player.stone;
+                document.getElementById('res-gold').innerText = player.gold;
+                
+                let hpPercent = Math.max(0, (player.health / player.maxHealth) * 100);
+                document.getElementById('health-bar').style.width = hpPercent + '%';
+                document.getElementById('health-text').innerText = `${player.health} / ${player.maxHealth}`;
+            }
+        });
+
+        socket.on('updateResources', (resList) => resources = resList);
+        socket.on('structurePlaced', (st) => structures.push(st));
+        socket.on('newPlayer', (p) => players[p.id] = p);
+        socket.on('removePlayer', (id) => delete players[id]);
 
         function startGame() {
             const nick = document.getElementById('nickname').value.trim();
@@ -257,36 +267,21 @@
         function doAction() {
             if(!gameStarted) return;
 
-            // Slot 4 seçiliyse Duvar Koy
-            if(selectedSlot === 4) {
-                if(player.wood >= 20) {
-                    player.wood -= 20;
-                    document.getElementById('res-wood').innerText = player.wood;
-                    const wallX = player.x + Math.cos(player.angle) * 60;
-                    const wallY = player.y + Math.sin(player.angle) * 60;
-                    socket.emit('placeStructure', { x: wallX, y: wallY, type: 'wall', radius: 25 });
-                }
+            // Yapı Kurma
+            if(selectedSlot > 0) {
+                let types = ['', 'wall', 'spike', 'trap', 'windmill'];
+                let tName = types[selectedSlot];
+                const placeX = player.x + Math.cos(player.angle) * 60;
+                const placeY = player.y + Math.sin(player.angle) * 60;
+                socket.emit('placeStructure', { x: placeX, y: placeY, type: tName });
                 return;
             }
 
-            // Vurma Aksi
+            // Vurma / Toplama
             if(player.attacking) return;
             player.attacking = true;
             player.attackAnim = 0;
-
-            resources.forEach(res => {
-                const dist = Math.hypot(res.x - player.x, res.y - player.y);
-                if(dist < player.radius + res.radius + 35) {
-                    if(res.type === 'tree') {
-                        player.wood += 15;
-                        document.getElementById('res-wood').innerText = player.wood;
-                    } else {
-                        player.stone += 10;
-                        document.getElementById('res-stone').innerText = player.stone;
-                    }
-                    player.score += 25;
-                }
-            });
+            socket.emit('hitAction');
         }
 
         function selectSlot(idx) {
@@ -296,14 +291,13 @@
         }
 
         function updateLeaderboard() {
-            const list = Object.values(otherPlayers);
-            list.push(player);
+            const list = Object.values(players);
             list.sort((a,b) => b.score - a.score);
 
             const lbContainer = document.getElementById('lb-list');
             lbContainer.innerHTML = '';
-            list.forEach((p, index) => {
-                const isMe = p.name === player.name && p.score === player.score;
+            list.slice(0, 5).forEach((p, index) => {
+                const isMe = p.id === socket.id;
                 const row = document.createElement('div');
                 row.className = `lb-row ${isMe ? 'me' : ''}`;
                 row.innerHTML = `<span>${index+1}. ${p.name}</span><span>${p.score}</span>`;
@@ -322,7 +316,7 @@
             ctx.translate(p.x, p.y);
             ctx.rotate(p.angle);
 
-            let weaponAngle = p.attacking ? Math.sin(Date.now() / 50) * 0.9 : 0;
+            let weaponAngle = p.attacking ? Math.sin(Date.now() / 40) * 0.9 : 0;
 
             ctx.save();
             ctx.translate(20, 15);
@@ -346,7 +340,7 @@
 
             ctx.restore();
 
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 13px Arial';
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
@@ -372,7 +366,7 @@
 
             socket.emit('playerUpdate', {
                 x: player.x, y: player.y, angle: player.angle,
-                name: player.name, score: player.score, attacking: player.attacking
+                name: player.name, attacking: player.attacking
             });
 
             updateMinimap();
@@ -382,7 +376,7 @@
             ctx.save();
             ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
 
-            // Grid Arka Plan
+            // Grid
             ctx.strokeStyle = '#52852c'; ctx.lineWidth = 4;
             const gridSize = 80;
             const startX = Math.floor((player.x - canvas.width) / gridSize) * gridSize;
@@ -393,12 +387,15 @@
             for(let x = startX; x < endX; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
             for(let y = startY; y < endY; y += gridSize) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
 
-            // Yapılar (Duvarlar)
+            // Yapılar (Wall, Spike, Trap, Windmill)
             structures.forEach(st => {
                 ctx.beginPath();
                 ctx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#a17a4a'; ctx.fill();
-                ctx.lineWidth = 5; ctx.strokeStyle = '#5c4018'; ctx.stroke();
+                if(st.type === 'wall') { ctx.fillStyle = '#a17a4a'; ctx.strokeStyle = '#5c4018'; }
+                else if(st.type === 'spike') { ctx.fillStyle = '#b0bec5'; ctx.strokeStyle = '#37474f'; }
+                else if(st.type === 'trap') { ctx.fillStyle = '#37474f'; ctx.strokeStyle = '#212121'; }
+                else if(st.type === 'windmill') { ctx.fillStyle = '#ffb74d'; ctx.strokeStyle = '#e65100'; }
+                ctx.fill(); ctx.lineWidth = 5; ctx.stroke();
             });
 
             // Kaynaklar (Ağaç / Taş)
@@ -414,12 +411,12 @@
                 }
             });
 
-            // Diğer Oyuncuları Çiz
-            for (let id in otherPlayers) {
-                if (id !== socket.id) drawCharacter(otherPlayers[id], false);
+            // Diğer Oyuncular
+            for (let id in players) {
+                if (id !== socket.id) drawCharacter(players[id], false);
             }
 
-            // Kendimizi Çiz
+            // Kendimiz
             drawCharacter(player, true);
 
             ctx.restore();
