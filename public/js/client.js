@@ -2,19 +2,17 @@ const socket = io();
 const canvas = document.createElement('canvas');
 canvas.id = 'gameCanvas';
 document.body.appendChild(canvas);
-const ctx = canvas.getContext('2d', { alpha: false }); // Performans için alpha kapalı
+const ctx = canvas.getContext('2d', { alpha: false });
 
-// Yüksek Çözünürlük (Retina/Mobil Ekranlar İçin Keskinlik)
 const dpr = window.devicePixelRatio || 1;
 
 let myId = null;
-let gameState = { players: {}, resources: [], structures: [] };
+let gameState = { players: {}, resources: [], structures: [], animals: [], leaderboard: [] };
 let selectedSlot = 0;
 let inputs = { up: false, down: false, left: false, right: false };
 let playerAngle = 0;
 let isAttacking = false;
 
-// Profesyonel Mobil Joystick Kontrolleri
 let leftTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
 let rightTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
 
@@ -28,7 +26,6 @@ function resize() {
 window.addEventListener('resize', resize); 
 resize();
 
-// UI Bağlantıları
 document.getElementById('play-normal').onclick = () => startGame(false);
 document.getElementById('play-sandbox').onclick = () => startGame(true);
 
@@ -42,7 +39,6 @@ function startGame(isSandbox) {
     }
 }
 
-// HTML'den çağrılan buton fonksiyonları
 window.selectSlot = function(slot) {
     selectedSlot = slot;
     document.querySelectorAll('.slot').forEach((el, idx) => {
@@ -58,7 +54,6 @@ window.createClan = function() {
     if (name) { socket.emit('createClan', name); window.toggleModal('clan-modal'); }
 };
 
-// Chat İşlemleri
 const chatInput = document.getElementById('chat-input');
 if(chatInput) {
     chatInput.addEventListener('keypress', e => {
@@ -75,7 +70,7 @@ socket.on('chatMessage', data => {
     }
 });
 
-// === GELİŞMİŞ MOBİL KONTROLLER (Çift Joystick) ===
+// MOBİL KONTROLLER (Sağ joystick ile otomatik vuruş aktif)
 window.addEventListener('touchstart', e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -85,8 +80,8 @@ window.addEventListener('touchstart', e => {
             leftTouch = { id: t.identifier, originX: t.clientX, originY: t.clientY, currX: t.clientX, currY: t.clientY, active: true };
         } else if (t.clientX >= window.innerWidth / 2 && !rightTouch.active) {
             rightTouch = { id: t.identifier, originX: t.clientX, originY: t.clientY, currX: t.clientX, currY: t.clientY, active: true };
-            isAttacking = true; 
-            socket.emit('action'); // Vur/İnşa Et tetikle
+            isAttacking = true;
+            socket.emit('action');
         }
     }
 }, {passive: false});
@@ -105,7 +100,11 @@ window.addEventListener('touchmove', e => {
             rightTouch.currX = t.clientX; rightTouch.currY = t.clientY;
             const dx = rightTouch.currX - rightTouch.originX;
             const dy = rightTouch.currY - rightTouch.originY;
-            if (Math.hypot(dx, dy) > 10) playerAngle = Math.atan2(dy, dx);
+            if (Math.hypot(dx, dy) > 10) {
+                playerAngle = Math.atan2(dy, dx);
+                isAttacking = true;
+                socket.emit('action'); // Sağ joystick yöneltildiğinde otomatik vurur/toplar
+            }
         }
     }
 }, {passive: false});
@@ -132,7 +131,7 @@ socket.on('gameState', state => {
 });
 
 // ==========================================
-// SPLOOP.IO PROFESYONEL GRAFİK MOTORU
+// ÇİZİM MOTORU & UI BİLEŞENLERİ
 // ==========================================
 
 function drawGrid(me) {
@@ -151,7 +150,6 @@ function drawGrid(me) {
     ctx.stroke();
 }
 
-// 1. Ağaç Çizimi (Katmanlı ve Gölgeli)
 function drawSploopTree(x, y, radius) {
     ctx.save(); ctx.translate(x, y);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -169,7 +167,6 @@ function drawSploopTree(x, y, radius) {
     ctx.restore();
 }
 
-// 2. Taş/Kaya Çizimi (Asimetrik)
 function drawSploopStone(x, y, radius) {
     ctx.save(); ctx.translate(x, y);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -186,89 +183,39 @@ function drawSploopStone(x, y, radius) {
     ctx.beginPath();
     for (let i = 0; i < 8; i++) {
         let angle = (i / 8) * Math.PI * 2;
-        let dist = radius * (0.85 + Math.random() * 0.15); 
+        let dist = radius * 0.9;
         if (i === 0) ctx.moveTo(Math.cos(angle) * dist, Math.sin(angle) * dist);
         else ctx.lineTo(Math.cos(angle) * dist, Math.sin(angle) * dist);
     }
     ctx.closePath();
     ctx.fill(); ctx.stroke();
-
-    ctx.strokeStyle = '#757575';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-radius*0.4, -radius*0.2); ctx.lineTo(radius*0.3, radius*0.4); ctx.stroke();
     ctx.restore();
 }
 
-// 3. Altın Madeni Çizimi (Sploop Stil)
 function drawSploopGold(x, y, radius) {
     ctx.save(); ctx.translate(x, y);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.beginPath(); ctx.arc(0, radius * 0.3, radius + 5, 0, Math.PI * 2); ctx.fill();
 
-    const grad = ctx.createLinearGradient(-radius, -radius, radius, radius);
-    grad.addColorStop(0, '#ffd54f');
-    grad.addColorStop(1, '#f57f17');
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = '#f57f17';
     ctx.strokeStyle = '#bc5100';
     ctx.lineWidth = 4;
-
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = '#ffecb3';
-    ctx.beginPath(); ctx.arc(-radius*0.3, -radius*0.3, radius*0.2, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 }
 
-// 4. Metal Spike (Diken)
-function drawSploopSpike(x, y, radius) {
-    ctx.save(); ctx.translate(x, y);
-    ctx.fillStyle = '#4a4a4a';
-    ctx.beginPath(); ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#2c2c2c'; ctx.stroke();
-
-    ctx.fillStyle = '#d4d4d4'; 
-    for (let i = 0; i < 4; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath();
-        ctx.moveTo(-radius * 0.2, -radius * 0.5);
-        ctx.lineTo(radius * 0.2, -radius * 0.5);
-        ctx.lineTo(0, -radius - 5); 
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-    }
+function drawAnimal(a) {
+    ctx.save(); ctx.translate(a.x, a.y);
+    ctx.fillStyle = '#8d5524'; // Hayvan (Domuz/Kuş vb. baz gövde)
+    ctx.beginPath(); ctx.arc(0, 0, a.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#3d2310'; ctx.stroke();
     ctx.restore();
 }
 
-// 5. Trap (Tuzak) Çizimi (Gizli Çukur ve Dişler)
-function drawSploopTrap(x, y, radius) {
-    ctx.save(); ctx.translate(x, y);
-    ctx.fillStyle = '#5c4033'; 
-    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#38251b'; ctx.stroke();
-
-    ctx.fillStyle = '#241a14';
-    ctx.beginPath(); ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = '#a8a8a8';
-    ctx.strokeStyle = '#4f4f4f';
-    for (let i = 0; i < 8; i++) {
-        ctx.rotate((Math.PI * 2) / 8);
-        ctx.beginPath();
-        ctx.moveTo(-8, -radius * 0.9);
-        ctx.lineTo(8, -radius * 0.9);
-        ctx.lineTo(0, -radius * 0.3); 
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-    }
-    ctx.restore();
-}
-
-// 6. Oyuncu, Kılıç ve Eller
 function drawSploopPlayer(p, isMe) {
     ctx.save(); ctx.translate(p.x, p.y);
 
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#000';
@@ -282,8 +229,7 @@ function drawSploopPlayer(p, isMe) {
 
     ctx.rotate(p.angle);
 
-    let weaponExtend = p.isAttacking ? 15 : 0; 
-    let handPunch = p.isAttacking ? 8 : 0;
+    let weaponExtend = (isMe && isAttacking) ? 15 : 0; 
 
     ctx.save();
     ctx.translate(0, weaponExtend); 
@@ -291,45 +237,67 @@ function drawSploopPlayer(p, isMe) {
     if (p.selectedSlot === 0) {
         ctx.translate(p.radius + 10, 0); 
         ctx.rotate(Math.PI / 4); 
-
-        let swordGrad = ctx.createLinearGradient(0, 0, 0, -50);
-        swordGrad.addColorStop(0, '#e0e0e0');
-        swordGrad.addColorStop(1, '#fafafa');
-        
-        ctx.fillStyle = swordGrad;
+        ctx.fillStyle = '#e0e0e0';
         ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-        
-        ctx.beginPath(); 
-        ctx.moveTo(-6, -10);
-        ctx.lineTo(-4, -55);
-        ctx.lineTo(0, -65); 
-        ctx.lineTo(4, -55);
-        ctx.lineTo(6, -10);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-
-        ctx.fillStyle = '#cfb53b'; 
-        ctx.fillRect(-12, -10, 24, 6);
-        ctx.strokeRect(-12, -10, 24, 6);
-
-        ctx.fillStyle = '#5c4033';
-        ctx.fillRect(-4, -4, 8, 16);
-        ctx.strokeRect(-4, -4, 8, 16);
-    } else if (p.selectedSlot === 1) {
-        ctx.fillStyle = '#ff4747'; ctx.strokeStyle = '#8a1111'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(p.radius + 15, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#2e8a11'; 
-        ctx.beginPath(); ctx.ellipse(p.radius + 15, -10, 6, 3, Math.PI/4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.rect(-4, -45, 8, 45); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
 
     ctx.fillStyle = '#fbc093'; 
     ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
-
-    ctx.beginPath(); ctx.arc(p.radius - 5, p.radius - 5 + handPunch, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(p.radius - 5, -p.radius + 5, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.radius - 5, 10, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.radius - 5, -10, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+}
+
+// LEADERBOARD VE MINIMAP ÇİZİMİ
+function drawUIOverlay() {
+    // 1. Leaderboard (Sağ Üst)
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.roundRect(window.innerWidth - 210, 20, 190, 150, 8);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('LİDERLİK TABLOSU', window.innerWidth - 115, 45);
+
+    ctx.font = '13px Arial';
+    ctx.textAlign = 'left';
+    let rankY = 70;
+    if (gameState.leaderboard && gameState.leaderboard.length > 0) {
+        gameState.leaderboard.forEach((entry, idx) => {
+            ctx.fillText(`${idx + 1}. ${entry.name} - ${entry.score}`, window.innerWidth - 195, rankY);
+            rankY += 22;
+        });
+    } else {
+        ctx.fillText('1. Oyuncu - 100', window.innerWidth - 195, rankY);
+    }
+    ctx.restore();
+
+    // 2. Minimap (Sol Alt)
+    ctx.save();
+    const mapSize = 130;
+    const mapX = 20;
+    const mapY = window.innerHeight - mapSize - 100;
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.roundRect(mapX, mapY, mapSize, mapSize, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2; ctx.stroke();
+    
+    // Minimap Oyuncu Noktası
+    const me = gameState.players[myId];
+    if (me) {
+        let dotX = mapX + (me.x / 4000) * mapSize; // Dünya boyutuna göre oranla
+        let dotY = mapY + (me.y / 4000) * mapSize;
+        ctx.fillStyle = '#ff4747';
+        ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2); ctx.fill();
+    }
     ctx.restore();
 }
 
@@ -342,13 +310,9 @@ function render() {
         ctx.translate(window.innerWidth / 2 - me.x, window.innerHeight / 2 - me.y);
 
         gameState.structures.forEach(s => {
-            if (s.type === 'trap') drawSploopTrap(s.x, s.y, s.radius);
-            else if (s.type === 'spike') drawSploopSpike(s.x, s.y, s.radius);
-            else if (s.type === 'wall') {
-                ctx.fillStyle = '#8d5524';
-                ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI*2); ctx.fill();
-                ctx.lineWidth = 3; ctx.strokeStyle = '#4e2f13'; ctx.stroke();
-            }
+            ctx.fillStyle = '#8d5524';
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI*2); ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#4e2f13'; ctx.stroke();
         });
 
         gameState.resources.forEach(r => {
@@ -357,11 +321,17 @@ function render() {
             else if (r.type === 'gold') drawSploopGold(r.x, r.y, r.radius);
         });
 
+        if (gameState.animals) {
+            gameState.animals.forEach(a => drawAnimal(a));
+        }
+
         for (let id in gameState.players) {
             drawSploopPlayer(gameState.players[id], id === myId);
         }
 
         ctx.restore();
+        
+        drawUIOverlay();
         drawJoysticks();
     }
     requestAnimationFrame(render);
