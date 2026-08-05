@@ -15,17 +15,38 @@ let particles = [];
 let cameraZoom = 0.85;
 let targetZoom = 0.85;
 
-// --- Sploop.io Şapka Verileri ---
+// --- Sploop.io Şapka & Aksesuar Verileri ---
 const HATS = [
     { id: 'none', name: 'Yok', price: 0, icon: '🚫', color: 'transparent' },
+    { id: 'bush', name: 'Bush Hat', price: 300, icon: '🌿', color: '#2e7d32' },
     { id: 'bumber', name: 'Bumber Hat', price: 500, icon: '🪖', color: '#558b2f' },
     { id: 'bull', name: 'Bull Helmet', price: 1500, icon: '🐂', color: '#3e2723' },
     { id: 'boost', name: 'Boost Hat', price: 2000, icon: '⚡', color: '#fbc02d' },
     { id: 'winter', name: 'Winter Cap', price: 1000, icon: '❄️', color: '#0288d1' }
 ];
 
+// --- Sploop.io Age Eşya Seçenekleri ---
+const AGE_UPGRADES = {
+    2: [
+        { id: 'sword', name: 'Great Sword', icon: '⚔️', desc: 'Yüksek Hasar' },
+        { id: 'spear', name: 'Spear', icon: '🗡️', desc: 'Uzun Menzil' }
+    ],
+    3: [
+        { id: 'cookie', name: 'Cookie', icon: '🍪', desc: '+40 Can' },
+        { id: 'boostPad', name: 'Boost Pad', icon: '💨', desc: 'Hızlandırıcı' }
+    ],
+    4: [
+        { id: 'greaterSpike', name: 'Spinning Spike', icon: '⚙️', desc: 'Dönen Diken' },
+        { id: 'poisonSpike', name: 'Poison Spike', icon: '☣️', desc: 'Zehir Diken' }
+    ],
+    5: [
+        { id: 'windmill', name: 'Fast Windmill', icon: '🌀', desc: 'Hızlı Altın' },
+        { id: 'trap', name: 'Pitfall Trap', icon: '🕳️', desc: 'Tuzak' }
+    ]
+};
+
 let selectedHat = 'none';
-let currentAge = 1;
+let lastAgePrompted = 1;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -34,25 +55,47 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Mağaza (Shop) Paneli Oluşturma
-function setupShopUI() {
-    let shopBtn = document.createElement('button');
-    shopBtn.id = 'shop-toggle-btn';
-    shopBtn.innerText = '🛒 MAĞAZA';
-    shopBtn.style.cssText = `
-        position: absolute; top: 15px; left: 15px; z-index: 1000;
-        background: #fbc02d; border: 3px solid #2d2d2d; border-radius: 8px;
-        color: #2d2d2d; font-weight: 900; font-size: 16px; padding: 8px 16px; cursor: pointer;
-    `;
-    document.body.appendChild(shopBtn);
+// --- Sploop UI Oluşturucu ---
+function setupSploopUI() {
+    if (document.getElementById('sploop-top-bar')) return;
 
-    let shopMenu = document.createElement('div');
-    shopMenu.id = 'shop-menu';
+    const topBar = document.createElement('div');
+    topBar.id = 'sploop-top-bar';
+    topBar.style.cssText = `
+        position: absolute; top: 12px; left: 12px; z-index: 1000;
+        display: flex; gap: 10px;
+    `;
+
+    // Shop Button
+    const shopBtn = document.createElement('button');
+    shopBtn.innerHTML = '🛒 MAĞAZA';
+    shopBtn.style.cssText = `
+        background: #fbc02d; border: 3px solid #1e1e1e; border-radius: 8px;
+        color: #1e1e1e; font-weight: 900; font-size: 15px; padding: 8px 16px; cursor: pointer;
+        box-shadow: 0 4px 0 #c79100;
+    `;
+
+    // Clan Button
+    const clanBtn = document.createElement('button');
+    clanBtn.innerHTML = '🛡️ KLAN';
+    clanBtn.style.cssText = `
+        background: #42a5f5; border: 3px solid #1e1e1e; border-radius: 8px;
+        color: #fff; font-weight: 900; font-size: 15px; padding: 8px 16px; cursor: pointer;
+        box-shadow: 0 4px 0 #1565c0;
+    `;
+
+    topBar.appendChild(shopBtn);
+    topBar.appendChild(clanBtn);
+    document.body.appendChild(topBar);
+
+    // Shop Menu Panel
+    const shopMenu = document.createElement('div');
+    shopMenu.id = 'sploop-shop-menu';
     shopMenu.style.cssText = `
-        position: absolute; top: 70px; left: 15px; z-index: 1000;
-        background: rgba(30, 30, 30, 0.85); border: 3px solid #fbc02d; border-radius: 12px;
-        padding: 12px; display: none; flex-direction: column; gap: 8px; backdrop-filter: blur(5px);
-        max-height: 350px; overflow-y: auto; color: white;
+        position: absolute; top: 60px; left: 12px; z-index: 1000;
+        background: rgba(20, 20, 20, 0.9); border: 3px solid #fbc02d; border-radius: 12px;
+        padding: 12px; display: none; flex-direction: column; gap: 8px; backdrop-filter: blur(6px);
+        width: 260px; max-height: 380px; overflow-y: auto; color: white;
     `;
     document.body.appendChild(shopMenu);
 
@@ -60,22 +103,26 @@ function setupShopUI() {
         shopMenu.style.display = shopMenu.style.display === 'flex' ? 'none' : 'flex';
         renderShopItems(shopMenu);
     };
+
+    clanBtn.onclick = () => {
+        alert('Klan sistemi yakında! Klan daveti gönderebilirsin.');
+    };
 }
 
 function renderShopItems(container) {
-    container.innerHTML = '<h3 style="margin:0 0 8px 0; text-align:center;">ŞAPKALAR</h3>';
+    container.innerHTML = '<h3 style="margin:0 0 8px 0; text-align:center; color:#fbc02d;">MAĞAZA</h3>';
     HATS.forEach(hat => {
         let item = document.createElement('div');
         item.style.cssText = `
             display: flex; align-items: center; justify-content: space-between;
-            background: #2b2b2b; padding: 6px 12px; border-radius: 6px; gap: 15px;
+            background: #2d2d2d; padding: 8px 10px; border-radius: 8px;
             border: ${selectedHat === hat.id ? '2px solid #66bb6a' : '1px solid #444'};
         `;
         item.innerHTML = `
-            <span style="font-size:20px">${hat.icon}</span>
-            <div style="flex-grow:1"><div style="font-weight:bold">${hat.name}</div><div style="font-size:10px; color:#aaa">${hat.price} Altın</div></div>
-            <button style="background:${selectedHat === hat.id ? '#66bb6a' : '#fbc02d'}; border:none; border-radius:4px; padding:4px 8px; font-weight:bold; cursor:pointer">
-                ${selectedHat === hat.id ? 'TAKILDI' : 'SATIN AL'}
+            <span style="font-size:22px">${hat.icon}</span>
+            <div style="flex-grow:1; margin-left:8px;"><div style="font-weight:bold; font-size:13px">${hat.name}</div><div style="font-size:10px; color:#aaa">${hat.price} Gold</div></div>
+            <button style="background:${selectedHat === hat.id ? '#66bb6a' : '#fbc02d'}; border:none; border-radius:6px; padding:5px 10px; font-weight:bold; cursor:pointer; font-size:11px">
+                ${selectedHat === hat.id ? 'TAKILDI' : 'AL'}
             </button>
         `;
         item.querySelector('button').onclick = () => {
@@ -87,13 +134,57 @@ function renderShopItems(container) {
     });
 }
 
+// Sploop Age Selection Upgrade Menu
+function checkAgeUpgrade(currentAge) {
+    if (currentAge > lastAgePrompted && AGE_UPGRADES[currentAge]) {
+        lastAgePrompted = currentAge;
+        showAgeSelectionMenu(currentAge);
+    }
+}
+
+function showAgeSelectionMenu(age) {
+    let menu = document.getElementById('age-upgrade-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'age-upgrade-menu';
+        menu.style.cssText = `
+            position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; z-index: 1001; background: rgba(0,0,0,0.75);
+            padding: 15px; border-radius: 14px; backdrop-filter: blur(8px);
+            border: 3px solid #fbc02d;
+        `;
+        document.body.appendChild(menu);
+    }
+
+    menu.innerHTML = '';
+    const items = AGE_UPGRADES[age];
+
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: #222; color: white; border: 2px solid #fbc02d;
+            border-radius: 10px; padding: 12px 20px; text-align: center;
+            cursor: pointer; user-select: none; transition: transform 0.1s;
+        `;
+        card.innerHTML = `<div style="font-size:36px">${item.icon}</div><div style="font-weight:bold; margin-top:4px">${item.name}</div><div style="font-size:11px; color:#ccc">${item.desc}</div>`;
+        
+        card.onclick = () => {
+            socket.emit('selectUpgrade', { item: item.id, age });
+            menu.style.display = 'none';
+        };
+        menu.appendChild(card);
+    });
+
+    menu.style.display = 'flex';
+}
+
 document.getElementById('play-btn').addEventListener('click', () => {
     const name = document.getElementById('nickname-input').value;
     socket.emit('joinGame', { name });
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('ui-container').classList.remove('hidden');
     isPlaying = true;
-    setupShopUI();
+    setupSploopUI();
 });
 
 inputHandler.onAttack = () => { if (isPlaying) socket.emit('attackAction'); };
@@ -143,6 +234,8 @@ socket.on('gameState', (state) => {
             document.getElementById('age-num').innerText = me.age;
             document.getElementById('xp-bar-fill').style.width = me.xp + '%';
 
+            checkAgeUpgrade(me.age);
+
             const minimapPlayer = document.getElementById('minimap-player');
             if (minimapPlayer) {
                 minimapPlayer.style.left = (me.x / MAP_SIZE * 100) + '%';
@@ -185,17 +278,15 @@ function getInterpolatedPlayers(t) {
     return result;
 }
 
-// Harita Biyom Çizimi (Kış / Çim / Çöl)
-function drawBiomesAndGrid(scale, me) {
+function drawGrid(scale, me) {
     const gridSize = 60 * scale;
     const offsetX = (canvas.width / 2 - me.x * scale) % gridSize;
     const offsetY = (canvas.height / 2 - me.y * scale) % gridSize;
 
-    // Ana Arka Plan
     ctx.fillStyle = '#7cb342';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
     ctx.lineWidth = 2;
 
     for (let x = offsetX; x < canvas.width; x += gridSize) {
@@ -218,7 +309,7 @@ function drawPlayer(p) {
     ctx.translate(p.x, p.y);
 
     // Gölge
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
     ctx.beginPath(); ctx.arc(3, 5, p.radius, 0, Math.PI * 2); ctx.fill();
 
     // İsim
@@ -229,7 +320,7 @@ function drawPlayer(p) {
     ctx.fillText(p.name, 0, -p.radius - 22);
     ctx.shadowBlur = 0;
 
-    // Can Barı
+    // Healthbar
     const barW = 48;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(-barW / 2, -p.radius - 14, barW, 7);
@@ -242,28 +333,28 @@ function drawPlayer(p) {
 
     let attackOffset = p.isAttacking ? 14 : 0;
 
-    // Eller
+    // Sol El
     ctx.fillStyle = '#e0a96d';
     ctx.strokeStyle = '#2d2d2d';
     ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.arc(22, -18, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Sağ el ve Silah
+    // Sağ El ve Silah
     ctx.save();
     ctx.translate(22 + attackOffset, 18);
 
     if (p.selectedSlot === 1 || p.weapon === 'sword') {
-        ctx.fillStyle = '#b0bec5';
+        ctx.fillStyle = '#cfd8dc';
         ctx.fillRect(10, -4, 38, 8);
         ctx.strokeRect(10, -4, 38, 8);
-        ctx.fillStyle = '#6d4c41';
+        ctx.fillStyle = '#5d4037';
         ctx.fillRect(0, -6, 10, 12);
         ctx.strokeRect(0, -6, 10, 12);
     } else {
-        ctx.fillStyle = '#6d4c41';
+        ctx.fillStyle = '#5d4037';
         ctx.fillRect(0, -3, 28, 6);
         ctx.strokeRect(0, -3, 28, 6);
-        ctx.fillStyle = '#546e7a';
+        ctx.fillStyle = '#455a64';
         ctx.fillRect(22, -15, 12, 30);
         ctx.strokeRect(22, -15, 12, 30);
     }
@@ -277,12 +368,12 @@ function drawPlayer(p) {
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4.5; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
 
-    // Şapka Çizimi (Şapka Takılıysa)
+    // Şapka Çizimi
     if (p.hatId && p.hatId !== 'none') {
         const hat = HATS.find(h => h.id === p.hatId);
-        if (hat) {
+        if (hat && hat.color !== 'transparent') {
             ctx.fillStyle = hat.color;
-            ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.7, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, p.radius * 0.75, 0, Math.PI * 2); ctx.fill();
             ctx.lineWidth = 3; ctx.strokeStyle = '#2d2d2d'; ctx.stroke();
         }
     }
@@ -304,7 +395,7 @@ function drawStructures(structures, me, scale) {
         ctx.lineWidth = 4; ctx.strokeStyle = '#2d2d2d';
 
         if (st.type === 'wall') {
-            ctx.fillStyle = '#a1887f';
+            ctx.fillStyle = '#8d6e63';
             ctx.fillRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
             ctx.strokeRect(-st.radius, -st.radius, st.radius * 2, st.radius * 2);
         } else if (st.type === 'spike') {
@@ -418,7 +509,7 @@ function renderLoop(now) {
     const me = players[myId];
     if (me) {
         const scale = cameraZoom;
-        drawBiomesAndGrid(scale, me);
+        drawGrid(scale, me);
 
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
