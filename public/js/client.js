@@ -2,8 +2,9 @@ const socket = io();
 const canvas = document.createElement('canvas');
 canvas.id = 'gameCanvas';
 document.body.appendChild(canvas);
-const ctx = canvas.getContext('2d', { alpha: false });
 
+// Performans için alpha kapatıldı ve isobilgi render ayarları optimize edildi
+const ctx = canvas.getContext('2d', { alpha: false });
 const dpr = window.devicePixelRatio || 1;
 
 let myId = null;
@@ -12,6 +13,10 @@ let selectedSlot = 0;
 let inputs = { up: false, down: false, left: false, right: false };
 let playerAngle = 0;
 let isAttacking = false;
+let selectedSkinColor = '#fbc093';
+
+// Aktif ekrandaki chat mesajlarını tutan liste (5-6 saniye silinme mantığı için)
+let activeChatMessages = [];
 
 let leftTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
 let rightTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
@@ -26,18 +31,21 @@ function resize() {
 window.addEventListener('resize', resize); 
 resize();
 
-document.getElementById('play-normal').onclick = () => startGame(false);
-document.getElementById('play-sandbox').onclick = () => startGame(true);
+// Renk Seçim Mantığı
+document.querySelectorAll('.color-option').forEach(el => {
+    el.onclick = () => {
+        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedSkinColor = el.getAttribute('data-color');
+    };
+});
 
-function startGame(isSandbox) {
-    const name = document.getElementById('nickname-input').value || 'Splooper';
-    socket.emit('joinGame', { name, isSandbox });
+document.getElementById('play-btn').onclick = () => {
+    const name = document.getElementById('nickname-input').value || 'gtrsp player';
+    socket.emit('joinGame', { name, color: selectedSkinColor, isSandbox: false });
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('ui-container').classList.remove('hidden');
-    if (isSandbox && document.getElementById('sandbox-btn')) {
-        document.getElementById('sandbox-btn').classList.remove('hidden');
-    }
-}
+};
 
 window.selectSlot = function(slot) {
     selectedSlot = slot;
@@ -46,31 +54,31 @@ window.selectSlot = function(slot) {
         else el.classList.remove('active');
     });
 };
-window.toggleModal = function(id) { document.getElementById(id).classList.toggle('active'); };
-window.giveSandboxRes = function() { socket.emit('sandboxGiveRes'); };
-window.buyHat = function(hat) { socket.emit('buyHat', hat); window.toggleModal('shop-modal'); };
-window.createClan = function() {
-    const name = document.getElementById('clan-name-input').value;
-    if (name) { socket.emit('createClan', name); window.toggleModal('clan-modal'); }
-};
+window.toggleModal = function(id) { /* Modaller */ };
 
+// Chat Yazıldığında Anında Herkesin Görmesi ve 5-6 Saniye İçinde Kaybolması
 const chatInput = document.getElementById('chat-input');
 if(chatInput) {
     chatInput.addEventListener('keypress', e => {
         if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-            socket.emit('chatMsg', chatInput.value); chatInput.value = '';
+            socket.emit('chatMsg', chatInput.value); 
+            chatInput.value = '';
+            chatInput.blur(); // Mobilde klavyeyi kapat
         }
     });
 }
+
 socket.on('chatMessage', data => {
-    const box = document.getElementById('chat-messages');
-    if(box) {
-        box.innerHTML += `<div><b>${data.name}:</b> ${data.text}</div>`;
-        box.scrollTop = box.scrollHeight;
-    }
+    // Oyuncunun üzerine veya chat havuzuna ekle (5500 milisaniye = 5.5 saniye sonra silinir)
+    activeChatMessages.push({
+        id: data.id,
+        text: data.text,
+        name: data.name,
+        expireTime: Date.now() + 5500
+    });
 });
 
-// MOBİL KONTROLLER (Sağ joystick ile otomatik vuruş aktif)
+// Mobil & Dokunmatik Kontroller (Optimizasyonlu)
 window.addEventListener('touchstart', e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -103,7 +111,7 @@ window.addEventListener('touchmove', e => {
             if (Math.hypot(dx, dy) > 10) {
                 playerAngle = Math.atan2(dy, dx);
                 isAttacking = true;
-                socket.emit('action'); // Sağ joystick yöneltildiğinde otomatik vurur/toplar
+                socket.emit('action');
             }
         }
     }
@@ -130,9 +138,7 @@ socket.on('gameState', state => {
     socket.emit('playerInput', { inputs, angle: playerAngle, selectedSlot });
 });
 
-// ==========================================
-// ÇİZİM MOTORU & UI BİLEŞENLERİ
-// ==========================================
+// ÇİZİM MOTORU (Performans & Doğru Orantılı Karakter Boyutları)
 
 function drawGrid(me) {
     ctx.fillStyle = '#78b546'; 
@@ -158,12 +164,6 @@ function drawSploopTree(x, y, radius) {
     ctx.fillStyle = '#3e6b23';
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 4; ctx.strokeStyle = '#234011'; ctx.stroke();
-
-    ctx.fillStyle = '#548f2e';
-    ctx.beginPath(); ctx.arc(-radius*0.1, -radius*0.1, radius * 0.75, 0, Math.PI * 2); ctx.fill();
-    
-    ctx.fillStyle = '#65a639';
-    ctx.beginPath(); ctx.arc(-radius*0.25, -radius*0.25, radius * 0.45, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 }
 
@@ -172,133 +172,125 @@ function drawSploopStone(x, y, radius) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.beginPath(); ctx.arc(0, radius * 0.3, radius + 5, 0, Math.PI * 2); ctx.fill();
 
-    const grad = ctx.createLinearGradient(-radius, -radius, radius, radius);
-    grad.addColorStop(0, '#9e9e9e');
-    grad.addColorStop(1, '#616161');
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = '#757575';
     ctx.strokeStyle = '#424242';
     ctx.lineWidth = 4;
-
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-        let angle = (i / 8) * Math.PI * 2;
-        let dist = radius * 0.9;
-        if (i === 0) ctx.moveTo(Math.cos(angle) * dist, Math.sin(angle) * dist);
-        else ctx.lineTo(Math.cos(angle) * dist, Math.sin(angle) * dist);
-    }
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
-}
-
-function drawSploopGold(x, y, radius) {
-    ctx.save(); ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.beginPath(); ctx.arc(0, radius * 0.3, radius + 5, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = '#f57f17';
-    ctx.strokeStyle = '#bc5100';
-    ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.restore();
-}
-
-function drawAnimal(a) {
-    ctx.save(); ctx.translate(a.x, a.y);
-    ctx.fillStyle = '#8d5524'; // Hayvan (Domuz/Kuş vb. baz gövde)
-    ctx.beginPath(); ctx.arc(0, 0, a.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#3d2310'; ctx.stroke();
     ctx.restore();
 }
 
 function drawSploopPlayer(p, isMe) {
     ctx.save(); ctx.translate(p.x, p.y);
 
-    ctx.font = 'bold 15px Arial';
+    // Orijinal Sploop.io Oranlarında Küçültülmüş & Dengelenmiş Karakter
+    let r = p.radius || 22;
+
+    // İsim ve Can Barı
+    ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
-    ctx.strokeText(p.name, 0, -p.radius - 25);
-    ctx.fillText(p.name, 0, -p.radius - 25);
+    ctx.strokeText(p.name, 0, -r - 22);
+    ctx.fillText(p.name, 0, -r - 22);
 
-    ctx.fillStyle = '#333'; ctx.fillRect(-25, -p.radius - 15, 50, 8);
-    ctx.fillStyle = '#4caf50'; ctx.fillRect(-25, -p.radius - 15, (p.health / p.maxHealth) * 50, 8);
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(-25, -p.radius - 15, 50, 8);
+    ctx.fillStyle = '#333'; ctx.fillRect(-22, -r - 12, 44, 6);
+    ctx.fillStyle = '#4caf50'; ctx.fillRect(-22, -r - 12, (p.health / p.maxHealth) * 44, 6);
 
     ctx.rotate(p.angle);
 
-    let weaponExtend = (isMe && isAttacking) ? 15 : 0; 
-
+    let weaponExtend = (isMe && isAttacking) ? 12 : 0; 
     ctx.save();
     ctx.translate(0, weaponExtend); 
 
     if (p.selectedSlot === 0) {
-        ctx.translate(p.radius + 10, 0); 
+        ctx.translate(r + 8, 0); 
         ctx.rotate(Math.PI / 4); 
         ctx.fillStyle = '#e0e0e0';
         ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.rect(-4, -45, 8, 45); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.rect(-3, -35, 6, 35); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
 
-    ctx.fillStyle = '#fbc093'; 
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(p.radius - 5, 10, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(p.radius - 5, -10, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Eller
+    ctx.fillStyle = p.color || '#fbc093'; 
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(r - 4, 8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r - 4, -8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Gövde (Kafa)
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    // Yüz Detayları (Gözler - Orijinal Sploop Hissiyatı)
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(r * 0.3, -6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.3, 6, 3, 0, Math.PI * 2); ctx.fill();
+
     ctx.restore();
 }
 
-// LEADERBOARD VE MINIMAP ÇİZİMİ
 function drawUIOverlay() {
-    // 1. Leaderboard (Sağ Üst)
+    // Leaderboard (Sağ Üst)
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.roundRect(window.innerWidth - 210, 20, 190, 150, 8);
-    ctx.fill();
+    ctx.fillRect(window.innerWidth - 190, 60, 175, 130);
 
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px Arial';
+    ctx.font = 'bold 13px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('LİDERLİK TABLOSU', window.innerWidth - 115, 45);
+    ctx.fillText('LİDERLİK TABLOSU', window.innerWidth - 102, 82);
 
-    ctx.font = '13px Arial';
+    ctx.font = '12px Arial';
     ctx.textAlign = 'left';
-    let rankY = 70;
+    let rankY = 105;
     if (gameState.leaderboard && gameState.leaderboard.length > 0) {
         gameState.leaderboard.forEach((entry, idx) => {
-            ctx.fillText(`${idx + 1}. ${entry.name} - ${entry.score}`, window.innerWidth - 195, rankY);
-            rankY += 22;
+            ctx.fillText(`${idx + 1}. ${entry.name} - ${entry.score}`, window.innerWidth - 180, rankY);
+            rankY += 20;
         });
     } else {
-        ctx.fillText('1. Oyuncu - 100', window.innerWidth - 195, rankY);
+        ctx.fillText('1. gtrsp - 100', window.innerWidth - 180, rankY);
     }
     ctx.restore();
 
-    // 2. Minimap (Sol Alt)
+    // Minimap (Sol Alt)
     ctx.save();
-    const mapSize = 130;
+    const mapSize = 110;
     const mapX = 20;
-    const mapY = window.innerHeight - mapSize - 100;
+    const mapY = window.innerHeight - mapSize - 20;
     
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.roundRect(mapX, mapY, mapSize, mapSize, 8);
-    ctx.fill();
+    ctx.fillRect(mapX, mapY, mapSize, mapSize);
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 2; ctx.stroke();
     
-    // Minimap Oyuncu Noktası
     const me = gameState.players[myId];
     if (me) {
-        let dotX = mapX + (me.x / 4000) * mapSize; // Dünya boyutuna göre oranla
+        let dotX = mapX + (me.x / 4000) * mapSize;
         let dotY = mapY + (me.y / 4000) * mapSize;
         ctx.fillStyle = '#ff4747';
-        ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(dotX, dotY, 3, 0, Math.PI*2); ctx.fill();
     }
     ctx.restore();
+
+    // Anlık Chat Mesajlarını Oyuncuların Üzerinde Gösterme ve Süre Aşımı Kontrolü
+    const now = Date.now();
+    activeChatMessages = activeChatMessages.filter(msg => msg.expireTime > now);
+
+    activeChatMessages.forEach(msg => {
+        let targetPlayer = gameState.players[msg.id];
+        if (targetPlayer) {
+            ctx.save();
+            ctx.font = 'bold 13px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffff00';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.strokeText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 45);
+            ctx.fillText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 45);
+            ctx.restore();
+        }
+    });
 }
 
 function render() {
@@ -318,11 +310,13 @@ function render() {
         gameState.resources.forEach(r => {
             if (r.type === 'tree') drawSploopTree(r.x, r.y, r.radius);
             else if (r.type === 'stone') drawSploopStone(r.x, r.y, r.radius);
-            else if (r.type === 'gold') drawSploopGold(r.x, r.y, r.radius);
         });
 
         if (gameState.animals) {
-            gameState.animals.forEach(a => drawAnimal(a));
+            gameState.animals.forEach(a => {
+                ctx.fillStyle = '#a0522d';
+                ctx.beginPath(); ctx.arc(a.x, a.y, a.radius, 0, Math.PI*2); ctx.fill();
+            });
         }
 
         for (let id in gameState.players) {
@@ -340,14 +334,14 @@ function render() {
 function drawJoysticks() {
     if (leftTouch.active) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.beginPath(); ctx.arc(leftTouch.originX, leftTouch.originY, 60, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(leftTouch.originX, leftTouch.originY, 50, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.beginPath(); ctx.arc(leftTouch.currX, leftTouch.currY, 25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(leftTouch.currX, leftTouch.currY, 20, 0, Math.PI*2); ctx.fill();
     }
     if (rightTouch.active) {
         ctx.fillStyle = 'rgba(255, 50, 50, 0.1)';
-        ctx.beginPath(); ctx.arc(rightTouch.originX, rightTouch.originY, 60, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rightTouch.originX, rightTouch.originY, 50, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(255, 50, 50, 0.4)';
-        ctx.beginPath(); ctx.arc(rightTouch.currX, rightTouch.currY, 25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rightTouch.currX, rightTouch.currY, 20, 0, Math.PI*2); ctx.fill();
     }
 }

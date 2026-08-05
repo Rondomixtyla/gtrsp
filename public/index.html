@@ -3,102 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sploop.io Mobile Edition</title>
+    <title>gtrsp.io</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: sans-serif; touch-action: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; position: fixed; }
-        #gameCanvas { width: 100vw; height: 100vh; display: block; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #78b546; font-family: sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .hidden { display: none !important; }
         
         /* Giriş Menüsü */
-        #start-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .menu-box { background: #2d3748; padding: 25px; border-radius: 16px; border: 3px solid #4a5568; text-align: center; width: 90%; max-width: 320px; }
-        .menu-box h1 { color: #52b788; font-size: 32px; margin-bottom: 12px; }
-        .menu-box input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #718096; margin-bottom: 12px; background: #1a202c; color: #fff; font-size: 16px; text-align: center; }
-        .btn { width: 100%; padding: 12px; margin: 4px 0; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; }
-        .btn-green { background: #22c55e; color: #fff; }
-        .btn-blue { background: #3b82f6; color: #fff; }
-
-        /* Oyun Arayüzü */
-        #ui-container { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+        #start-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10;
+        }
+        .menu-box { background: #fff; padding: 25px; border-radius: 12px; text-align: center; width: 320px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+        .menu-box h1 { margin-top: 0; color: #333; font-size: 28px; }
+        .menu-box input { width: 90%; padding: 10px; margin: 10px 0; border: 2px solid #ccc; border-radius: 6px; font-size: 16px; outline: none; text-align: center; }
         
-        /* Üst Butonlar */
-        #top-btns { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; pointer-events: auto; }
-        .top-btn { padding: 8px 12px; background: rgba(45, 55, 72, 0.9); border: 2px solid #718096; color: #fff; font-size: 12px; font-weight: bold; border-radius: 8px; }
+        /* Renk Seçimi */
+        .color-picker { display: flex; justify-content: center; gap: 10px; margin: 15px 0; }
+        .color-option { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform 0.2s; }
+        .color-option.selected { border-color: #000; transform: scale(1.15); }
 
-        /* Mobil Envanter Barı */
-        #hotbar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; background: rgba(0,0,0,0.6); padding: 6px; border-radius: 10px; border: 2px solid #4a5568; pointer-events: auto; }
-        .slot { width: 46px; height: 46px; background: #2d3748; border: 2px solid #718096; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 20px; }
-        .slot.active { border-color: #eab308; background: #4a5568; transform: scale(1.05); }
+        .btn { background: #4caf50; color: white; border: none; padding: 12px 20px; width: 100%; font-size: 18px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        .btn:hover { background: #43a047; }
 
-        /* Mobil Saldırı / Action Butonu */
-        #attack-btn { position: absolute; bottom: 80px; right: 25px; width: 70px; height: 70px; background: rgba(239, 68, 68, 0.85); border: 3px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: bold; font-size: 14px; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-        #attack-btn:active { transform: scale(0.92); background: rgba(220, 38, 38, 1); }
-
-        /* Chat Küçük Mobil Kutusu */
-        #chat-box { position: absolute; top: 10px; right: 10px; width: 160px; height: 90px; background: rgba(0,0,0,0.4); border-radius: 6px; display: flex; flex-direction: column; pointer-events: auto; }
-        #chat-messages { flex: 1; padding: 4px; overflow-y: auto; color: #fff; font-size: 10px; }
-        #chat-input { background: rgba(0,0,0,0.6); border: none; padding: 4px; color: #fff; font-size: 11px; }
-
-        /* Modallar */
-        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2d3748; border: 3px solid #718096; border-radius: 12px; padding: 15px; width: 280px; color: #fff; z-index: 100; display: none; pointer-events: auto; }
-        .modal.active { display: block; }
-        .close-btn { float: right; color: #ef4444; font-weight: bold; }
+        /* Oyun İçi Arayüz */
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .interactive { pointer-events: auto; }
         
-        .hidden { display: none !important; }
+        .top-left-btns { position: absolute; top: 15px; left: 15px; display: flex; gap: 10px; }
+        .ui-btn { background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        
+        /* Sağ Üst Chat Kutusu (Anlık Yazı Akışı) */
+        #chat-container { position: absolute; top: 15px; right: 220px; width: 250px; }
+        #chat-input { width: 100%; background: rgba(0,0,0,0.3); border: none; border-radius: 6px; padding: 8px; color: white; font-size: 14px; outline: none; }
+        #chat-input::placeholder { color: #ddd; }
+
+        /* Sağ Alt Envanter */
+        #inventory { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 10px; }
+        .slot { width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid transparent; }
+        .slot.active { border-color: #ffd700; background: rgba(255,255,255,0.4); }
     </style>
 </head>
 <body>
 
     <div id="start-menu">
         <div class="menu-box">
-            <h1>Sploop Mobile</h1>
-            <input type="text" id="nickname-input" placeholder="Oyuncu Adı" maxlength="12">
-            <button class="btn btn-green" id="play-normal">Oyuna Başla</button>
-            <button class="btn btn-blue" id="play-sandbox">Sandbox Modu</button>
+            <h1>gtrsp.io</h1>
+            <input type="text" id="nickname-input" placeholder="Karakter Adı" maxlength="12">
+            
+            <div style="font-size: 14px; font-weight: bold; color: #555; margin-top: 10px;">Karakter Rengi Seç</div>
+            <div class="color-picker">
+                <div class="color-option selected" style="background: #fbc093;" data-color="#fbc093"></div>
+                <div class="color-option" style="background: #e74c3c;" data-color="#e74c3c"></div>
+                <div class="color-option" style="background: #3498db;" data-color="#3498db"></div>
+                <div class="color-option" style="background: #9b59b6;" data-color="#9b59b6"></div>
+                <div class="color-option" style="background: #f1c40f;" data-color="#f1c40f"></div>
+            </div>
+
+            <button class="btn" id="play-btn">OYUNA BAŞLA</button>
         </div>
     </div>
 
     <div id="ui-container" class="hidden">
-        <div id="top-btns">
-            <button class="top-btn" onclick="toggleModal('shop-modal')">Market</button>
-            <button class="top-btn" onclick="toggleModal('clan-modal')">Klan</button>
-            <button class="top-btn hidden" id="sandbox-btn" onclick="giveSandboxRes()">+Kaynak</button>
+        <div class="top-left-btns interactive">
+            <button class="ui-btn" onclick="toggleModal('shop-modal')">Market</button>
+            <button class="ui-btn" onclick="toggleModal('clan-modal')">Klan</button>
         </div>
 
-        <div id="chat-box">
-            <div id="chat-messages"></div>
-            <input type="text" id="chat-input" placeholder="Chat...">
+        <div id="chat-container" class="interactive">
+            <input type="text" id="chat-input" placeholder="Bir şeyler yaz..." maxlength="60">
         </div>
 
-        <div id="attack-btn">VUR</div>
-
-        <div id="hotbar">
-            <div class="slot active" onclick="selectSlot(0)">🗡️</div>
+        <div id="inventory" class="interactive">
+            <div class="slot active" onclick="selectSlot(0)">⚔️</div>
             <div class="slot" onclick="selectSlot(1)">🍎</div>
             <div class="slot" onclick="selectSlot(2)">🪵</div>
-            <div class="slot" onclick="selectSlot(3)">⚙️</div>
+            <div class="slot" onclick="selectSlot(3)">🛡️</div>
             <div class="slot" onclick="selectSlot(4)">🌀</div>
         </div>
     </div>
 
-    <!-- Shop Modal -->
-    <div id="shop-modal" class="modal">
-        <span class="close-btn" onclick="toggleModal('shop-modal')">X</span>
-        <h4>Şapkalar</h4>
-        <hr style="margin: 8px 0;">
-        <button class="btn btn-blue" onclick="buyHat('boost')">⚡ Hız Şapkası</button>
-    </div>
-
-    <!-- Clan Modal -->
-    <div id="clan-modal" class="modal">
-        <span class="close-btn" onclick="toggleModal('clan-modal')">X</span>
-        <h4>Klan Kur</h4>
-        <hr style="margin: 8px 0;">
-        <input type="text" id="clan-name-input" placeholder="Klan İsmi" style="width:100%; padding:6px; margin-bottom:6px;">
-        <button class="btn btn-green" onclick="createClan()">Oluştur</button>
-    </div>
-
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/client.js"></script>
+    <script src="/js/client.js"></script>
 </body>
 </html>
