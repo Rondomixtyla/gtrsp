@@ -14,6 +14,7 @@ let playerAngle = 0;
 let isAttacking = false;
 let selectedSkinColor = '#fbc093';
 let activeChatMessages = [];
+let floatingTexts = []; // Kaynak toplama yazıları için
 
 let leftTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
 let rightTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
@@ -170,20 +171,18 @@ function drawSploopStone(x, y, radius) {
     ctx.restore();
 }
 
+// Karakter Çizimi ve Gelişmiş Silah / El / Savurma Sistemi
 function drawSploopPlayer(p, isMe) {
     ctx.save(); ctx.translate(p.x, p.y);
 
-    let r = p.radius || 22;
+    let r = p.radius || 24;
 
-    // Lider Kontrolü (En çok kill/skor)
     let isLeader = false;
-    let topKillerId = null;
     if (gameState.leaderboard && gameState.leaderboard.length > 0) {
-        topKillerId = gameState.leaderboard[0].id;
-        if (p.id === topKillerId) isLeader = true;
+        if (p.id === gameState.leaderboard[0].id) isLeader = true;
     }
 
-    // İsim & Kurukafa / Taç Simgeleri
+    // İsim & Taç / Kurukafa
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
@@ -192,42 +191,76 @@ function drawSploopPlayer(p, isMe) {
     
     let displayName = p.name;
     if (isLeader) displayName = "👑 " + displayName;
-    else if (p.score === Math.max(...Object.values(gameState.players).map(pl => pl.score || 0))) {
-        displayName = "☠️ " + displayName;
-    }
 
-    ctx.strokeText(displayName, 0, -r - 22);
-    ctx.fillText(displayName, 0, -r - 22);
-
-    ctx.fillStyle = '#333'; ctx.fillRect(-22, -r - 12, 44, 6);
-    ctx.fillStyle = '#4caf50'; ctx.fillRect(-22, -r - 12, (p.health / p.maxHealth) * 44, 6);
+    ctx.strokeText(displayName, 0, -r - 15);
+    ctx.fillText(displayName, 0, -r - 15);
 
     ctx.rotate(p.angle);
 
-    let weaponExtend = (isMe && isAttacking) ? 12 : 0; 
+    // Büyük ve Belirgin Eller
+    ctx.fillStyle = p.color || '#fbc093'; 
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2.5;
+    
+    // Sağ el (Silah tutan)
+    ctx.beginPath(); ctx.arc(r - 2, 12, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Sol el
+    ctx.beginPath(); ctx.arc(r - 2, -12, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    // Gövde (Kafa)
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    // Yüz Detayları
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(r * 0.35, -7, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.35, 7, 3.5, 0, Math.PI * 2); ctx.fill();
+
+    // Seçili Eşyaya Göre Eldeki Nesne ve Savurma (Swing) Efekti
     ctx.save();
-    ctx.translate(0, weaponExtend); 
+    let swingAngle = (isMe && isAttacking) ? Math.sin(Date.now() / 50) * 0.8 : 0;
+    ctx.translate(r + 6, 12);
+    ctx.rotate(swingAngle + Math.PI / 4);
 
     if (p.selectedSlot === 0) {
-        ctx.translate(r + 8, 0); 
-        ctx.rotate(Math.PI / 4); 
-        ctx.fillStyle = '#e0e0e0';
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.rect(-3, -35, 6, 35); ctx.fill(); ctx.stroke();
+        // Profesyonel Kılıç Tasarımı
+        ctx.fillStyle = '#e0e0e0'; ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.rect(-4, -45, 8, 45); ctx.fill(); ctx.stroke();
+        // Kılıç Kabzası
+        ctx.fillStyle = '#8d5524';
+        ctx.fillRect(-8, -10, 16, 6);
+    } else if (p.selectedSlot === 1) {
+        // Elma / Yiyecek
+        ctx.fillStyle = '#ff4747';
+        ctx.beginPath(); ctx.arc(0, -15, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    } else if (p.selectedSlot === 2) {
+        // Odun
+        ctx.fillStyle = '#a0522d';
+        ctx.fillRect(-6, -25, 12, 25);
+        ctx.strokeRect(-6, -25, 12, 25);
+    } else if (p.selectedSlot === 3) {
+        // Kalkan
+        ctx.fillStyle = '#4682b4';
+        ctx.beginPath(); ctx.arc(0, -15, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    } else {
+        // Özel Güç / Küre
+        ctx.fillStyle = '#9b59b6';
+        ctx.beginPath(); ctx.arc(0, -15, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
 
-    ctx.fillStyle = p.color || '#fbc093'; 
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(r - 4, 8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(r - 4, -8, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
 
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Can Barı ve Age (Seviye) Göstergesi - Karakterin Altında
+    ctx.save();
+    ctx.translate(p.x, p.y + r + 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-26, 0, 52, 8);
+    ctx.fillStyle = '#4caf50';
+    ctx.fillRect(-25, 1, Math.max(0, (p.health / p.maxHealth) * 50), 6);
 
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(r * 0.3, -6, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(r * 0.3, 6, 3, 0, Math.PI * 2); ctx.fill();
-
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Age ${p.age || 1}`, 0, 20);
     ctx.restore();
 }
 
@@ -255,7 +288,7 @@ function drawUIOverlay() {
     }
     ctx.restore();
 
-    // Minimap ve Lider İşareti
+    // Minimap
     ctx.save();
     const mapSize = 110;
     const mapX = 20;
@@ -266,7 +299,6 @@ function drawUIOverlay() {
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 2; ctx.stroke();
     
-    // Haritada Birincinin Konumu (Sarı/Yıldız nokta)
     if (gameState.leaderboard && gameState.leaderboard.length > 0) {
         let topId = gameState.leaderboard[0].id;
         let leaderObj = gameState.players[topId];
@@ -299,8 +331,8 @@ function drawUIOverlay() {
             ctx.fillStyle = '#ffff00';
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 3;
-            ctx.strokeText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 45);
-            ctx.fillText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 45);
+            ctx.strokeText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 35);
+            ctx.fillText(`${msg.name}: ${msg.text}`, targetPlayer.x, targetPlayer.y - targetPlayer.radius - 35);
             ctx.restore();
         }
     });
