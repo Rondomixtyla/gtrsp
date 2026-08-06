@@ -14,7 +14,6 @@ let playerAngle = 0;
 let isAttacking = false;
 let selectedSkinColor = '#fbc093';
 let activeChatMessages = [];
-let floatingTexts = []; // Kaynak toplama yazıları (+15 Wood vb.)
 
 let leftTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
 let rightTouch = { id: null, originX: 0, originY: 0, currX: 0, currY: 0, active: false };
@@ -51,7 +50,6 @@ window.selectSlot = function(slot) {
         else el.classList.remove('active');
     });
 };
-window.toggleModal = function(id) {};
 
 const chatInput = document.getElementById('chat-input');
 if(chatInput) {
@@ -171,11 +169,11 @@ function drawSploopStone(x, y, radius) {
     ctx.restore();
 }
 
-// Optimize Edilmiş Karakter Tasarımı (Küçük Kafa, Büyük Eller, Mükemmel Tutuş)
+// Görsel Efektler ve Geliştirilmiş Silah Çizimleri (Kılıç, Elma, Odun, Kalkan)
 function drawSploopPlayer(p, isMe) {
     ctx.save(); ctx.translate(p.x, p.y);
 
-    let r = p.radius || 19; // Daha orantılı ve küçük gövde/kafa
+    let r = p.radius || 19; 
 
     let isLeader = false;
     if (gameState.leaderboard && gameState.leaderboard.length > 0) {
@@ -196,7 +194,7 @@ function drawSploopPlayer(p, isMe) {
 
     ctx.rotate(p.angle);
 
-    // İri ve Dikkat Çekici Eller
+    // Büyük ve Orantılı Eller
     ctx.fillStyle = p.color || '#fbc093'; 
     ctx.strokeStyle = '#222'; ctx.lineWidth = 2.5;
     
@@ -205,7 +203,7 @@ function drawSploopPlayer(p, isMe) {
     // Sol El
     ctx.beginPath(); ctx.arc(r - 1, -13, 9.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-    // Kafa / Gövde
+    // Küçültülmüş Kafa / Gövde
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
     // Gözler
@@ -213,40 +211,54 @@ function drawSploopPlayer(p, isMe) {
     ctx.beginPath(); ctx.arc(r * 0.35, -5.5, 2.8, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(r * 0.35, 5.5, 2.8, 0, Math.PI * 2); ctx.fill();
 
-    // Slot Ekipmanları & Savurma Animasyonu
+    // Silahlar ve Canlı Savurma Efekti (Attack Swing Animation)
     ctx.save();
-    let swingAngle = (isMe && isAttacking) ? Math.sin(Date.now() / 40) * 0.9 : 0;
-    ctx.translate(r + 4, 13);
+    let swingAngle = (isMe && isAttacking) ? Math.sin(Date.now() / 35) * 1.1 : 0;
+    ctx.translate(r + 6, 13);
     ctx.rotate(swingAngle + Math.PI / 4);
 
     if (p.selectedSlot === 0) {
-        // Kılıç
-        ctx.fillStyle = '#e0e0e0'; ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.rect(-4, -48, 8, 48); ctx.fill(); ctx.stroke();
+        // Detaylı Parlayan Kılıç Efekti
+        ctx.fillStyle = '#eceff1'; ctx.strokeStyle = '#263238'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.rect(-5, -55, 10, 55); ctx.fill(); ctx.stroke();
+        // Kılıç Kenar Parlaması
+        ctx.fillStyle = '#90caf9';
+        ctx.fillRect(-2, -52, 3, 45);
+        // Kabza
         ctx.fillStyle = '#8d5524';
-        ctx.fillRect(-8, -10, 16, 6);
+        ctx.fillRect(-9, -10, 18, 7);
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.arc(0, -6, 4, 0, Math.PI*2); ctx.fill();
     } else if (p.selectedSlot === 1) {
-        // Elma
-        ctx.fillStyle = '#ff4747';
-        ctx.beginPath(); ctx.arc(0, -15, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        // Canlı Elma Efekti
+        ctx.fillStyle = '#ff3b30'; ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, -16, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        // ElmaSapı
+        ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(3, -34); ctx.stroke();
     } else if (p.selectedSlot === 2) {
-        // Odun
-        ctx.fillStyle = '#a0522d';
-        ctx.fillRect(-6, -26, 12, 26);
-        ctx.strokeRect(-6, -26, 12, 26);
+        // Odun / Tomruk Tasarımı
+        ctx.fillStyle = '#a0522d'; ctx.strokeStyle = '#4e2f13'; ctx.lineWidth = 2;
+        ctx.fillRect(-7, -30, 14, 30);
+        ctx.strokeRect(-7, -30, 14, 30);
+        // Odun Halkaları
+        ctx.fillStyle = '#d7ccc8';
+        ctx.beginPath(); ctx.arc(0, -30, 7, 0, Math.PI); ctx.fill();
     } else if (p.selectedSlot === 3) {
-        // Kalkan
-        ctx.fillStyle = '#4682b4';
-        ctx.beginPath(); ctx.arc(0, -15, 13, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        // Çelik Kalkan Efekti
+        ctx.fillStyle = '#546e7a'; ctx.strokeStyle = '#263238'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, -18, 15, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#cfd8dc';
+        ctx.beginPath(); ctx.arc(0, -18, 7, 0, Math.PI*2); ctx.fill();
     } else {
-        ctx.fillStyle = '#9b59b6';
-        ctx.beginPath(); ctx.arc(0, -15, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ab47bc';
+        ctx.beginPath(); ctx.arc(0, -16, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
 
     ctx.restore();
 
-    // Can Barı ve Age (Karakterin Altında)
+    // Can ve Yaş Göstergesi
     ctx.save();
     ctx.translate(p.x, p.y + r + 8);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
